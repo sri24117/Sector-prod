@@ -1,0 +1,2 @@
+# Shell scripts run inside Linux containers (infra/backup.sh is bind-mounted): keep LF everywhere.
+*.sh text eol=lf
