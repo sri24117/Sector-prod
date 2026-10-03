@@ -1,4 +1,4 @@
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
@@ -21,6 +21,14 @@ export async function buildApp(opts: { logger?: boolean; adsGateway?: GoogleAdsG
   await app.register(cors, { origin: process.env.APP_URL ?? "http://localhost:3000", credentials: true });
   await app.register(cookie);
   await app.register(rateLimit, { global: false });
+  // Unhandled errors: full detail goes to the server log only. A 5xx body must never echo
+  // internals (a bad DATABASE_URL once leaked Postgres's own error text via /auth/login).
+  // Deliberate 4xx errors (validation, rate limit) keep Fastify's default response.
+  app.setErrorHandler((err: FastifyError, request, reply) => {
+    if (err.statusCode && err.statusCode < 500) return reply.send(err);
+    request.log.error({ err }, "unhandled error");
+    return reply.status(500).send({ error: "server_error", message: "Something went wrong. Please try again." });
+  });
   registerAuthDecorators(app);
   await registerHealthRoutes(app);
   await registerAuditRoutes(app);
