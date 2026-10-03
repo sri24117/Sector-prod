@@ -62,7 +62,7 @@ export async function registerAuditRoutes(app: FastifyInstance): Promise<void> {
     }
 
     try {
-      const result = await withTimeout(runAudit(normalized), CRAWL_TIMEOUT_MS);
+      const result = await withTimeout(runAudit(normalized, { allowUrl: isSafePublicUrl }), CRAWL_TIMEOUT_MS);
       return reply.status(200).send(result);
     } catch (err) {
       request.log.warn({ err, url: normalized }, "audit crawl failed");
