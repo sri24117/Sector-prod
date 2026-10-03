@@ -96,7 +96,7 @@ silently forgotten).
 ## Acceptance criteria
 - Given a real, reachable static-HTML NGO URL, when submitted, then a score
   and 7 check results render within a few seconds, and the score matches
-  running `pnpm --filter @sector/crawler dev -- <url>` directly (same
+  running `pnpm --filter @sector/crawler audit -- <url>` directly (same
   underlying function).
 - Given an unreachable URL, when submitted, then a plain-language error
   renders and the form remains usable (no crash, no infinite spinner).
