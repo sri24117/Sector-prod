@@ -10,8 +10,10 @@
    pipeline is HUMAN DECISION REQUIRED / not yet built, see Open Decisions
    in `PROJECT.md`).
 2. `docker compose build`
-3. `docker compose run --rm api pnpm db:migrate deploy` (never `db:migrate dev`
-   against production — that can prompt destructively).
+3. `docker compose run --rm -w /repo api pnpm db:migrate` — applies the
+   committed Drizzle migrations in `packages/db/drizzle/`. Never run
+   `pnpm db:generate` against production; generate migrations locally and
+   commit them.
 4. `docker compose up -d`
 5. `docker compose ps` — confirm all services report healthy.
 6. Hit `/health` on the API through the public domain to confirm the proxy

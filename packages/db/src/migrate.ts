@@ -1,3 +1,4 @@
+import "./env.js";
 import { fileURLToPath } from "node:url";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { rawDb, pool } from "./client.js";

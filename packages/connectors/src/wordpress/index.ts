@@ -31,8 +31,17 @@ export class WordPressError extends Error {
   }
 }
 
+// Redirects are never followed: that would forward the Basic-auth header to another host.
+// Instead tell the user which address to connect with (typically apex -> www, http -> https).
 async function wpFetch(url: string, init: RequestInit): Promise<Response> {
-  return fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS), redirect: "error" });
+  const res = await fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS), redirect: "manual" });
+  const location = res.headers.get("location");
+  if (res.status >= 300 && res.status < 400 && location) {
+    const target = new URL(location, url);
+    const siteRoot = new URL(target.pathname.replace(/wp-json\/.*$/, ""), target).toString();
+    throw new WordPressError(`This site redirects to ${siteRoot} — connect using that address instead.`, res.status);
+  }
+  return res;
 }
 
 /** Confirms the credentials are valid AND that the companion plugin is installed. */

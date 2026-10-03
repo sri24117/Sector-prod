@@ -1,3 +1,4 @@
+import "./env.js";
 import { eq } from "drizzle-orm";
 import { rawDb, pool, schema } from "./client.js";
 

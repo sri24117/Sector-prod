@@ -1,0 +1,15 @@
+# Keep the build context small and free of host-specific or secret files.
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/coverage
+**/*.tsbuildinfo
+.git
+.claude
+**/.env
+**/.env.*
+!.env.example
+*.rdb
+*.log
+docs/reference
