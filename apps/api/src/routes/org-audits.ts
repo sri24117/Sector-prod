@@ -3,8 +3,9 @@ import { z } from "zod";
 import { runAudit } from "@sector/crawler";
 import { scopedDb } from "@sector/db";
 import { authenticate, requireRole, logSecurityEvent } from "../auth/middleware.js";
-import { normalizeUrl, withTimeout } from "./audit.js";
-import { isSafePublicUrl } from "../lib/ssrf.js";
+import { normalizeUrl } from "./audit.js";
+import { assessUrl, isSafePublicUrl } from "../lib/ssrf.js";
+import { withAuditSlot, BUSY } from "../lib/audit-slots.js";
 
 // Slice 3 (part 1): org-scoped, persisted audits. Every query goes through
 // scopedDb(request.auth.organizationId) — never rawDb (CLAUDE.md §3).
@@ -21,10 +22,14 @@ export async function registerOrgAuditRoutes(app: FastifyInstance): Promise<void
     const raw = parsed.data.url ?? profile?.websiteUrl;
     if (!raw) return reply.status(400).send({ error: "url_required", message: "Provide a url, or set a website on your organization profile." });
     const url = normalizeUrl(raw);
-    if (!url || !(await isSafePublicUrl(url))) return reply.status(400).send({ error: "url_not_allowed", message: "That address can't be audited." });
+    const verdict = url ? await assessUrl(url) : "blocked";
+    if (verdict === "unresolvable") return reply.status(400).send({ error: "site_not_found", message: "Could not find a website at that address. Check the spelling and try again." });
+    if (!url || verdict !== "ok") return reply.status(400).send({ error: "url_not_allowed", message: "That address can't be audited." });
 
     try {
-      const result = await withTimeout(runAudit(url, { allowUrl: isSafePublicUrl }), 15_000);
+      const slot = await withAuditSlot(() => runAudit(url, { allowUrl: isSafePublicUrl, signal: AbortSignal.timeout(15_000) }));
+      if (!slot) return reply.status(503).send(BUSY);
+      const result = slot.value;
       const saved = await db.audits.create({ url: result.url, score: result.score, runAt: new Date(result.runAt), checks: result.checks });
       return reply.status(201).send({ ...saved.audit, findings: saved.findings });
     } catch (err) {

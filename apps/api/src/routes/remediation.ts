@@ -72,7 +72,7 @@ export async function registerRemediationRoutes(app: FastifyInstance): Promise<v
       const jsonLd = buildOrganizationJsonLd({ name: org!.name, websiteUrl: profile?.websiteUrl }, creds.siteUrl);
       await applyJsonLdSchema(creds, jsonLd);
 
-      const after = await runAudit(creds.siteUrl, { allowUrl: isSafePublicUrl });
+      const after = await runAudit(creds.siteUrl, { allowUrl: isSafePublicUrl, signal: AbortSignal.timeout(15_000) });
       await db.audits.create({ url: after.url, score: after.score, runAt: new Date(after.runAt), checks: after.checks });
       const verified = after.checks.find((c) => c.checkId === "schema")?.passed === true;
 

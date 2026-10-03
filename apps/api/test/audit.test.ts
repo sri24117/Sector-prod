@@ -36,7 +36,7 @@ describe("POST /audit", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual(fakeResult);
-    expect(runAudit).toHaveBeenCalledWith("https://example-ngo.org/", { allowUrl: expect.any(Function) });
+    expect(runAudit).toHaveBeenCalledWith("https://example-ngo.org/", { allowUrl: expect.any(Function), signal: expect.any(AbortSignal) });
   });
 
   it("returns 400 for an empty/invalid URL and never calls the crawler", async () => {

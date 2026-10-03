@@ -1,5 +1,13 @@
 import * as cheerio from "cheerio";
-import { request } from "undici";
+import { request, type Dispatcher } from "undici";
+import { checkPublicUrl, guardedAgent, readCapped } from "@sector/shared/net-guard";
+
+// Every request goes through the guarded agent (SSRF check on the IP actually
+// dialled), carries the caller's abort signal, and reads a capped body.
+const UA = "SEctOrAuditBot/0.1 (+https://sector.example/bot)";
+const MAX_HTML_BYTES = 2 * 1024 * 1024;
+const MAX_TEXT_BYTES = 256 * 1024;
+interface Net { dispatcher: Dispatcher; signal?: AbortSignal }
 
 // See README.md — this is a reconstruction of the original audit-engine.js
 // prototype's documented design, not a re-run of the original file.
@@ -33,13 +41,10 @@ const AI_CRAWLER_UA_TOKENS = [
   "CCBot",
 ];
 
-async function fetchText(url: string): Promise<string> {
-  const res = await request(url, {
-    headers: {
-      "user-agent": "SEctOrAuditBot/0.1 (+https://sector.example/bot)",
-    },
-  });
-  return res.body.text();
+async function fetchText(url: string, net: Net): Promise<string> {
+  const res = await request(url, { headers: { "user-agent": UA }, dispatcher: net.dispatcher, signal: net.signal });
+  if (res.statusCode >= 300) { await res.body.dump(); throw new Error(`HTTP ${res.statusCode}`); }
+  return (await readCapped(res.body, MAX_TEXT_BYTES)).text;
 }
 
 function checkSchema($: cheerio.CheerioAPI): CheckResult {
@@ -71,10 +76,10 @@ function checkSchema($: cheerio.CheerioAPI): CheckResult {
   };
 }
 
-async function checkRobotsTxt(baseUrl: string): Promise<CheckResult> {
+async function checkRobotsTxt(baseUrl: string, net: Net): Promise<CheckResult> {
   try {
     const robotsUrl = new URL("/robots.txt", baseUrl).toString();
-    const text = await fetchText(robotsUrl);
+    const text = await fetchText(robotsUrl, net);
     const blocked = AI_CRAWLER_UA_TOKENS.filter((token) => {
       const re = new RegExp(`User-agent:\\s*${token}[\\s\\S]*?Disallow:\\s*/(?!\\S)`, "i");
       return re.test(text);
@@ -99,13 +104,14 @@ async function checkRobotsTxt(baseUrl: string): Promise<CheckResult> {
   }
 }
 
-async function checkLlmsTxt(baseUrl: string): Promise<CheckResult> {
+async function checkLlmsTxt(baseUrl: string, net: Net): Promise<CheckResult> {
   // Kept low-weight deliberately — see skills/audit-engine.md: 97% of
   // published llms.txt files receive zero AI-system requests. This is
   // hygiene, not a growth lever. Do not raise this weight.
   try {
     const llmsUrl = new URL("/llms.txt", baseUrl).toString();
-    const res = await request(llmsUrl);
+    const res = await request(llmsUrl, { headers: { "user-agent": UA }, dispatcher: net.dispatcher, signal: net.signal });
+    await res.body.dump({ limit: MAX_TEXT_BYTES });
     const passed = res.statusCode === 200;
     return {
       checkId: "llms_txt",
@@ -200,36 +206,42 @@ function checkFreshness($: cheerio.CheerioAPI, lastModifiedHeader?: string): Che
 }
 
 export interface RunAuditOptions {
-  // Called before every request, including each redirect hop. Callers that
-  // audit user-supplied URLs pass their SSRF guard here, so a public URL
-  // can't 30x the crawler into a private address.
+  // Pre-check before every page request, including each redirect hop. Defaults
+  // to checkPublicUrl; the guarded agent re-checks the real IP at connect time.
   allowUrl?: (url: string) => Promise<boolean>;
+  // Abort the whole audit (all its requests), e.g. AbortSignal.timeout(10_000).
+  signal?: AbortSignal;
+  // Tests may inject an agent; production always uses the guarded one.
+  dispatcher?: Dispatcher;
 }
 
 const MAX_REDIRECTS = 5;
 
 export async function runAudit(startUrl: string, opts: RunAuditOptions = {}): Promise<AuditResult> {
+  const net: Net = { dispatcher: opts.dispatcher ?? guardedAgent(), signal: opts.signal };
+  const allowUrl = opts.allowUrl ?? (async (u: string) => checkPublicUrl(u));
   let url = startUrl;
   let res;
   for (let hop = 0; ; hop++) {
-    if (opts.allowUrl && !(await opts.allowUrl(url))) throw new Error(`URL not allowed: ${url}`);
-    res = await request(url, {
-      headers: { "user-agent": "SEctOrAuditBot/0.1 (+https://sector.example/bot)" },
-    });
+    if (!(await allowUrl(url))) throw new Error(`URL not allowed: ${url}`);
+    res = await request(url, { headers: { "user-agent": UA }, dispatcher: net.dispatcher, signal: net.signal });
     const location = res.headers.location;
     if (res.statusCode < 300 || res.statusCode >= 400 || typeof location !== "string") break;
     await res.body.dump();
     if (hop >= MAX_REDIRECTS) throw new Error(`Too many redirects from ${startUrl}`);
     url = new URL(location, url).toString();
   }
-  const html = await res.body.text();
+  const { text: html } = await readCapped(res.body, MAX_HTML_BYTES);
   const $ = cheerio.load(html);
   const lastModified = res.headers["last-modified"] as string | undefined;
 
+  const robots = await checkRobotsTxt(url, net);
+  const llms = await checkLlmsTxt(url, net);
+  net.signal?.throwIfAborted(); // a timed-out audit stops here instead of reporting partial results
   const checks: CheckResult[] = [
     checkSchema($),
-    await checkRobotsTxt(url),
-    await checkLlmsTxt(url),
+    robots,
+    llms,
     checkHeadingHierarchy($),
     checkFaqPairs($),
     checkFrontLoadedStat($),

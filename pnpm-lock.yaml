@@ -169,6 +169,9 @@ importers:
       '@sector/shared':
         specifier: workspace:*
         version: link:../shared
+      undici:
+        specifier: ^6.19.0
+        version: 6.29.0
     devDependencies:
       typescript:
         specifier: ^5.6.0
@@ -213,10 +216,20 @@ importers:
         version: 2.1.9(@types/node@20.19.43)
 
   packages/shared:
+    dependencies:
+      undici:
+        specifier: ^6.19.0
+        version: 6.29.0
     devDependencies:
+      '@types/node':
+        specifier: ^20.14.0
+        version: 20.19.43
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@20.19.43)
 
   packages/skills:
     devDependencies:

@@ -82,3 +82,31 @@ Skill 7 (Ad Grants), including read-only compliance monitoring, must never
 activate for an organization whose FCRA status is not confirmed true. This is
 enforced as a hard check at the start of every Ad Grants workflow, not a
 UI-level hide.
+
+## Outbound requests to user-supplied URLs (SSRF)
+
+The audit crawler and the WordPress connector fetch URLs that users type, so
+both go through one guard: `packages/shared/src/net-guard.ts`.
+
+- **Pre-check** (`checkPublicUrl`, plus `assessUrl` in `apps/api/src/lib/ssrf.ts`):
+  http(s) only, no embedded credentials, no single-label or internal-looking
+  hostnames (`localhost`, `.internal`, `.local`, …), no private IP literals in
+  any notation (decimal, octal, short, IPv4-mapped/compatible IPv6, NAT64, 6to4).
+  DNS failure is a refusal (fail closed).
+- **Connection-time check** (`createGuardedAgent`): the IP actually dialled is
+  checked on every connection, including each redirect hop, robots.txt and
+  llms.txt. The validated address is the one connected to, so DNS rebinding
+  cannot slip a private IP in between check and fetch. Any private answer in
+  a DNS response refuses the whole connection.
+- **Resource limits**: whole-audit abort via `AbortSignal` (10 s public, 15 s
+  signed-in), 10 s header/body timeouts, page bodies capped at 2 MB and
+  robots.txt/llms.txt at 256 KB, at most 5 redirects, 4 connections per origin,
+  `AUDIT_CONCURRENCY` (default 4) concurrent audits per API process with a 503
+  "busy" answer beyond it, and the public `/audit` limited to 10 requests per
+  client per 10 minutes.
+- **Escape hatch**: `ALLOW_PRIVATE_TARGETS=1` disables the private-address
+  checks for local development and tests against a mock site. Never set it on
+  a server.
+
+Tests: `packages/shared/test/net-guard.test.ts`, `services/crawler/test/guard.test.ts`,
+`apps/api/test/ssrf.test.ts`.
