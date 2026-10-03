@@ -1,55 +1,143 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { api, ApiError } from "../../lib/api";
-import { Nav, Section, btn, card, err, input, page } from "../../lib/ui";
+import { api } from "../../lib/api";
+import { AppShell, Field, FindingList, Message, PageHead, RenderCaveat, Score, Section, useGuard, when, type Me } from "../../lib/ui";
 
 interface Audit { id: string; url: string; score: number; createdAt: string }
 interface Finding { id: string; checkId: string; passed: boolean; detail: string }
 interface Outcome { mode: "applied" | "manual"; status?: string; beforeScore?: number; afterScore?: number; package?: { title: string; steps: string[] } }
+interface Connection { siteUrl: string; status: string }
+
+function Audits({ me }: { me: Me }) {
+  const canWrite = me.role !== "viewer";
+  const [audits, setAudits] = useState<Audit[]>([]);
+  const [open, setOpen] = useState<{ audit: Audit; findings: Finding[]; fresh: boolean } | null>(null);
+  const [outcome, setOutcome] = useState<Record<string, Outcome>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+  const [url, setUrl] = useState("");
+  const [conn, setConn] = useState<Connection | null>(null);
+  const [wp, setWp] = useState({ siteUrl: "", username: "", applicationPassword: "" });
+  const guard = useGuard((m) => { setMsg(m); if (m) setOk(null); });
+
+  const load = useCallback(async () => setAudits(await api<Audit[]>("/audits")), []);
+  useEffect(() => {
+    void guard(load);
+    api<Connection>("/connections/wordpress").then(setConn).catch(() => setConn(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const show = (a: Audit) => guard(async () => {
+    const r = await api<{ findings: Finding[] }>(`/audits/${a.id}`);
+    setOpen({ audit: a, findings: r.findings, fresh: false });
+  });
+  const run = () => guard(async () => {
+    setBusy("run");
+    try {
+      const r = await api<Audit & { findings: Finding[] }>("/audits", { method: "POST", body: url ? { url } : {} });
+      setOpen({ audit: r, findings: r.findings, fresh: true });
+      await load();
+    } finally { setBusy(null); }
+  });
+  const connect = () => guard(async () => {
+    setBusy("connect");
+    try {
+      const c = await api<Connection>("/connections/wordpress", { method: "POST", body: wp });
+      setConn(c); setOk("WordPress is connected. Structured-data fixes can now be applied directly.");
+      setWp({ siteUrl: "", username: "", applicationPassword: "" });
+    } finally { setBusy(null); }
+  });
+  const fix = (f: Finding) => guard(async () => {
+    setBusy(f.id);
+    try {
+      const o = await api<Outcome>(`/findings/${f.id}/remediate`, { method: "POST" });
+      setOutcome((s) => ({ ...s, [f.id]: o }));
+      await load();
+    } finally { setBusy(null); }
+  });
+
+  function fixFor(f: Finding) {
+    const o = outcome[f.id];
+    if (o?.mode === "applied") {
+      return <p className="notice notice-ok"><span>Fix applied ({o.status === "verified" ? "confirmed on re-check" : "not yet visible on re-check"}). Score {o.beforeScore} to {o.afterScore}.</span></p>;
+    }
+    if (o?.mode === "manual" && o.package) {
+      return <div className="stack-2"><p className="finding-title">{o.package.title}</p><ol className="finding-steps">{o.package.steps.map((s) => <li key={s}>{s}</li>)}</ol></div>;
+    }
+    if (!canWrite) return null;
+    const live = f.checkId === "schema";
+    if (live && !conn) return <p className="small">Connect WordPress below to apply this fix directly, or <button type="button" className="btn-link" onClick={() => fix(f)}>show me how to fix this</button>.</p>;
+    return (
+      <button type="button" className={live ? "btn" : "btn btn-quiet"} disabled={busy === f.id} onClick={() => fix(f)}>
+        {busy === f.id ? "Working…" : live ? "Apply fix to my WordPress site" : "Show me how to fix this"}
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <PageHead title="Audits">Run an audit, see what needs attention, and fix it.</PageHead>
+      <Message text={msg} />
+      <Message text={ok} tone="ok" />
+
+      {canWrite && (
+        <Section title="Run an audit" id="run">
+          <form className="inline-form" onSubmit={(e) => { e.preventDefault(); void run(); }}>
+            <input className="input" inputMode="url" aria-label="Website address" placeholder="Your website, or leave blank" value={url} onChange={(e) => setUrl(e.target.value)} />
+            <button type="submit" className="btn" disabled={busy === "run"}>{busy === "run" ? "Running audit…" : "Run audit"}</button>
+          </form>
+        </Section>
+      )}
+
+      {open && (
+        <Section title="Results" id="results">
+          <p className="finding-title" style={{ overflowWrap: "anywhere" }}>{open.audit.url}</p>
+          <p className="small">Audited {when(open.audit.createdAt)}</p>
+          <div style={{ marginTop: "var(--s-5)" }}><Score value={open.audit.score} animate={open.fresh} /></div>
+          <RenderCaveat />
+          <div style={{ marginTop: "var(--s-6)", paddingTop: "var(--s-6)", borderTop: "1px solid var(--line)" }}>
+            <FindingList items={open.findings} fix={fixFor} />
+          </div>
+        </Section>
+      )}
+
+      <Section title="History" id="history">
+        {audits.length === 0 ? <p className="muted">No audits yet.</p> : (
+          <ul className="rows">
+            {audits.map((a) => (
+              <li key={a.id}>
+                <span className="row-main"><span className="row-score">{a.score}</span> <span style={{ marginLeft: "var(--s-3)" }}>{a.url}</span><br /><span className="small">{when(a.createdAt)}</span></span>
+                <button type="button" className="btn-link" onClick={() => show(a)}>View findings</button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section title="WordPress connection" id="wordpress">
+        {conn ? (
+          <p className="notice notice-ok"><span>Connected to <strong>{conn.siteUrl}</strong>. Structured-data fixes are applied directly to this site.</span></p>
+        ) : (
+          <p className="muted prose">Not connected. Connecting lets SEctOr apply structured-data fixes to your site and re-check them.</p>
+        )}
+        {canWrite && (
+          <form style={{ marginTop: "var(--s-5)", maxWidth: 480 }} onSubmit={(e) => { e.preventDefault(); void connect(); }}>
+            <p className="small prose" style={{ marginBottom: "var(--s-4)" }}>
+              Install the SEctOr Companion plugin on your site, then create an Application Password for a WordPress administrator
+              (Users, Profile, Application Passwords). Your password is stored encrypted and never shown again.
+            </p>
+            <Field label="Site address"><input className="input" inputMode="url" value={wp.siteUrl} onChange={(e) => setWp({ ...wp, siteUrl: e.target.value })} required /></Field>
+            <Field label="WordPress username"><input className="input" autoComplete="off" value={wp.username} onChange={(e) => setWp({ ...wp, username: e.target.value })} required /></Field>
+            <Field label="Application password"><input className="input" type="password" autoComplete="off" value={wp.applicationPassword} onChange={(e) => setWp({ ...wp, applicationPassword: e.target.value })} required /></Field>
+            <div className="actions"><button type="submit" className="btn" disabled={busy === "connect"}>{busy === "connect" ? "Checking connection…" : conn ? "Reconnect WordPress" : "Connect WordPress"}</button></div>
+          </form>
+        )}
+      </Section>
+    </>
+  );
+}
 
 export default function AuditsPage() {
-  const router = useRouter();
-  const [audits, setAudits] = useState<Audit[]>([]);
-  const [open, setOpen] = useState<{ audit: Audit; findings: Finding[] } | null>(null);
-  const [outcome, setOutcome] = useState<Record<string, Outcome>>({});
-  const [msg, setMsg] = useState<string | null>(null);
-  const [url, setUrl] = useState("");
-  const [wp, setWp] = useState({ siteUrl: "", username: "", applicationPassword: "" });
-
-  const guard = useCallback(async <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
-    setMsg(null);
-    try { return await fn(); } catch (e) { if (e instanceof ApiError && e.status === 401) router.push("/login"); else setMsg(e instanceof Error ? e.message : "Something went wrong."); }
-  }, [router]);
-  const load = useCallback(() => guard(async () => setAudits(await api<Audit[]>("/audits"))), [guard]);
-  useEffect(() => { void load(); }, [load]);
-
-  const show = (a: Audit) => guard(async () => setOpen(await api(`/audits/${a.id}`).then((r) => ({ audit: a, findings: (r as { findings: Finding[] }).findings }))));
-  const run = () => guard(async () => { await api("/audits", { method: "POST", body: url ? { url } : {} }); await load(); });
-  const connect = () => guard(async () => { await api("/connections/wordpress", { method: "POST", body: wp }); setMsg("WordPress connected."); setWp({ siteUrl: "", username: "", applicationPassword: "" }); });
-  const fix = (f: Finding) => guard(async () => { const o = await api<Outcome>(`/findings/${f.id}/remediate`, { method: "POST" }); setOutcome((s) => ({ ...s, [f.id]: o })); await load(); });
-
-  return (<main style={page}><Nav /><h1>Audits &amp; fixes</h1>
-    {msg && <p role="alert" style={err}>{msg}</p>}
-    <Section title="Run an audit">
-      <input style={input} placeholder="https://yourorg.org (blank = your profile website)" value={url} onChange={(e) => setUrl(e.target.value)} />
-      <button style={btn} onClick={run}>Run audit</button></Section>
-    <Section title="Connect WordPress (enables one-click fixes)">
-      <p style={{ color: "#666" }}>Install the SEctOr Companion plugin, then create an Application Password for a WordPress admin.</p>
-      <input style={input} placeholder="Site URL" value={wp.siteUrl} onChange={(e) => setWp({ ...wp, siteUrl: e.target.value })} />
-      <input style={input} placeholder="WordPress username" value={wp.username} onChange={(e) => setWp({ ...wp, username: e.target.value })} />
-      <input style={input} type="password" placeholder="Application password" value={wp.applicationPassword} onChange={(e) => setWp({ ...wp, applicationPassword: e.target.value })} />
-      <button style={btn} onClick={connect}>Connect</button></Section>
-    <Section title="History">
-      {audits.length === 0 && <p>No audits yet.</p>}
-      {audits.map((a) => <div key={a.id} style={{ display: "flex", justifyContent: "space-between", padding: "0.4rem 0" }}>
-        <span>{a.url} — <strong>{a.score}/100</strong> <small>{new Date(a.createdAt).toLocaleString()}</small></span><button style={btn} onClick={() => show(a)}>Findings</button></div>)}</Section>
-    {open && <Section title={`Findings for ${open.audit.url} (${open.audit.score}/100)`}>
-      {open.findings.map((f) => <div key={f.id} style={card}>
-        <strong>{f.passed ? "✓" : "✗"} {f.checkId}</strong><div style={{ color: "#555" }}>{f.detail}</div>
-        {!f.passed && !outcome[f.id] && <button style={{ ...btn, marginTop: "0.5rem" }} onClick={() => fix(f)}>{f.checkId === "schema" ? "Apply fix to my WordPress site" : "Get manual fix steps"}</button>}
-        {outcome[f.id]?.mode === "applied" && <p>Applied — {outcome[f.id]!.status}. Score {outcome[f.id]!.beforeScore} → <strong>{outcome[f.id]!.afterScore}</strong>.</p>}
-        {outcome[f.id]?.mode === "manual" && <div><strong>{outcome[f.id]!.package!.title}</strong><ol>{outcome[f.id]!.package!.steps.map((s) => <li key={s}>{s}</li>)}</ol></div>}
-      </div>)}</Section>}
-  </main>);
+  return <AppShell>{(me) => <Audits me={me} />}</AppShell>;
 }

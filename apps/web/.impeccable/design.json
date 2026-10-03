@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-03T19:40:00Z",
+  "title": "Design System: SEctOr",
+  "source": "docs/design/design-system.pdf (binding, approved by the user); shipped in apps/web/src/app/globals.css and apps/web/src/lib/ui.tsx",
+  "extensions": {
+    "colorMeta": {
+      "paper": { "role": "neutral", "displayName": "Sage Paper", "canonical": "#f6f7f3", "tonalRamp": ["#232521", "#3b3e38", "#575b53", "#787c73", "#9b9f95", "#c0c3b9", "#e2e4dc", "#f6f7f3"] },
+      "ink": { "role": "neutral", "displayName": "Green-Black Ink", "canonical": "#161b17", "tonalRamp": ["#161b17", "#2e352f", "#474f48", "#626a63", "#7f877f", "#a0a69f", "#c6cac4", "#eceee9"] },
+      "ink-muted": { "role": "neutral", "displayName": "Muted Ink", "canonical": "#5b6058", "tonalRamp": ["#1c1e1b", "#30332e", "#464a44", "#5b6058", "#7a7f76", "#9ca098", "#c1c4bd", "#e6e8e3"] },
+      "line": { "role": "neutral", "displayName": "Hairline", "canonical": "#e2e4dc", "tonalRamp": ["#22241f", "#3b3e37", "#585c53", "#797d73", "#9da196", "#c1c4ba", "#e2e4dc", "#f4f5f0"] },
+      "pine": { "role": "primary", "displayName": "Pine", "canonical": "#1f4d3b", "tonalRamp": ["#0d2219", "#1f4d3b", "#2d6550", "#4a8a6f", "#6ea58c", "#96c1ac", "#c1dccd", "#e6f2eb"] },
+      "ochre": { "role": "secondary", "displayName": "Attention Ochre", "canonical": "#9c6b1f", "tonalRamp": ["#2e1f08", "#5a3d11", "#9c6b1f", "#b67f2e", "#c99445", "#dbb377", "#ebd2aa", "#f8eedc"] },
+      "on-pine": { "role": "neutral", "displayName": "Paper on Pine", "canonical": "#f6f7f3", "tonalRamp": ["#232521", "#3b3e38", "#575b53", "#787c73", "#9b9f95", "#c0c3b9", "#e2e4dc", "#f6f7f3"] },
+      "paper-dark": { "role": "neutral", "displayName": "Ink Ground (dark mode)", "canonical": "#161b17", "tonalRamp": ["#161b17", "#2e352f", "#474f48", "#626a63", "#7f877f", "#a0a69f", "#c6cac4", "#eceee9"] },
+      "ink-dark": { "role": "neutral", "displayName": "Paper Text (dark mode)", "canonical": "#f6f7f3", "tonalRamp": ["#232521", "#3b3e38", "#575b53", "#787c73", "#9b9f95", "#c0c3b9", "#e2e4dc", "#f6f7f3"] },
+      "ink-muted-dark": { "role": "neutral", "displayName": "Muted Ink (dark mode, build extension)", "canonical": "#a9ada4", "tonalRamp": ["#20221f", "#373a35", "#52564f", "#70746c", "#8f938a", "#a9ada4", "#cdd0c9", "#eef0eb"] },
+      "line-dark": { "role": "neutral", "displayName": "Hairline (dark mode, build extension)", "canonical": "#2e352f", "tonalRamp": ["#161b17", "#2e352f", "#474f48", "#626a63", "#7f877f", "#a0a69f", "#c6cac4", "#eceee9"] },
+      "pine-dark": { "role": "primary", "displayName": "Light Pine (dark mode)", "canonical": "#4a8a6f", "tonalRamp": ["#0d2219", "#1f4d3b", "#2d6550", "#4a8a6f", "#6ea58c", "#96c1ac", "#c1dccd", "#e6f2eb"] },
+      "ochre-dark": { "role": "secondary", "displayName": "Light Ochre (dark mode)", "canonical": "#c99445", "tonalRamp": ["#2e1f08", "#5a3d11", "#9c6b1f", "#b67f2e", "#c99445", "#dbb377", "#ebd2aa", "#f8eedc"] },
+      "on-pine-dark": { "role": "neutral", "displayName": "Ink on Pine (dark mode)", "canonical": "#161b17", "tonalRamp": ["#161b17", "#2e352f", "#474f48", "#626a63", "#7f877f", "#a0a69f", "#c6cac4", "#eceee9"] }
+    },
+    "contrast": [
+      { "pair": "ochre #9c6b1f on paper #f6f7f3", "ratio": "4.30:1", "use": "Drawn attention mark only (non-text, 3:1 needed); never small text." },
+      { "pair": "pine-dark #4a8a6f on paper-dark #161b17", "ratio": "4.29:1", "use": "Borders, underlines, marks, focus only; link and button text is paper in dark mode." },
+      { "pair": "ink-muted #5b6058 on paper #f6f7f3", "ratio": "about 6:1", "use": "Secondary text." }
+    ],
+    "openDecisions": [
+      { "name": "Score rule colour", "status": "OPEN HUMAN DECISION", "detail": "Shipped always ink. Whether it turns pine above a 'good' threshold, and what that threshold is, is undecided." }
+    ],
+    "typographyMeta": {
+      "score": { "displayName": "Score", "purpose": "The audit score numeral only; counts up over 600ms." },
+      "headline": { "displayName": "Page Headline", "purpose": "One per screen." },
+      "row-score": { "displayName": "Row Score", "purpose": "Score figures in history rows." },
+      "title": { "displayName": "Section Heading", "purpose": "Section headings and the overview aside headings." },
+      "wordmark": { "displayName": "Wordmark", "purpose": "\"SEctOr\" in the shell bar and on public pages; Public Sans, not the serif." },
+      "body": { "displayName": "Body", "purpose": "Everything else; prose capped at 70ch." },
+      "body-strong": { "displayName": "Body Strong", "purpose": "Field labels, finding titles, button text, organisation name." },
+      "small": { "displayName": "Small / Caption", "purpose": "Captions, timestamps, hints, render caveat; ink-muted except finding status words, which are ink." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Declared token; the score count-up itself uses a cubic ease-out in JS (1 - (1-p)^3)." },
+      { "name": "score-count-up", "value": "600ms", "purpose": "The one orchestrated moment: numeral 0 to score, rule scaleX in sync. Instant under prefers-reduced-motion." },
+      { "name": "state-change", "value": "150ms", "purpose": "Opacity, colour, border-colour and underline-thickness on hover/focus. Nothing else animates." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "max-width: 480px", "purpose": "Tighter page padding; user block wraps to its own line." },
+      { "name": "columns", "value": "min-width: 880px", "purpose": "Overview splits 65/35." },
+      { "name": "container", "value": "1040px", "purpose": "Shell and page max width; narrow pages 560px." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Pine fill, paper text, labelled with exactly what happens. In dark mode it becomes transparent with a 2px pine border and paper text.",
+      "html": "<button class=\"ds-btn\">Run free audit</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 16px; border: 1px solid #1f4d3b; border-radius: 6px; background: #1f4d3b; color: #f6f7f3; font-family: 'Public Sans', system-ui, sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity 150ms, background-color 150ms, color 150ms; } .ds-btn:hover { opacity: 0.9; } .ds-btn:focus-visible { outline: 2px solid #1f4d3b; outline-offset: 2px; } .ds-btn:disabled { opacity: 0.55; cursor: default; } @media (prefers-color-scheme: dark) { .ds-btn { background: transparent; color: #f6f7f3; border: 2px solid #4a8a6f; } .ds-btn:focus-visible { outline-color: #4a8a6f; } }"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Secondary action: transparent, ink text, hairline border.",
+      "html": "<button class=\"ds-btn-quiet\">Cancel</button>",
+      "css": ".ds-btn-quiet { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 16px; border: 1px solid #e2e4dc; border-radius: 6px; background: transparent; color: #161b17; font-family: 'Public Sans', system-ui, sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; transition: border-color 150ms; } .ds-btn-quiet:hover { border-color: #5b6058; } .ds-btn-quiet:focus-visible { outline: 2px solid #1f4d3b; outline-offset: 2px; }"
+    },
+    {
+      "name": "Link Button",
+      "kind": "button",
+      "refersTo": "button-link",
+      "description": "Boxless action such as Log out; pine underlined text (paper text, pine underline in dark mode).",
+      "html": "<button class=\"ds-btn-link\">Log out</button>",
+      "css": ".ds-btn-link { padding: 0; border: 0; background: none; color: #1f4d3b; font-family: 'Public Sans', system-ui, sans-serif; font-size: 16px; font-weight: 600; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; cursor: pointer; transition: text-decoration-thickness 150ms; } .ds-btn-link:hover { text-decoration-thickness: 2px; } .ds-btn-link:focus-visible { outline: 2px solid #1f4d3b; outline-offset: 2px; border-radius: 2px; } @media (prefers-color-scheme: dark) { .ds-btn-link { color: #f6f7f3; text-decoration-color: #4a8a6f; } }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Label above, optional muted hint, hairline field that turns pine on focus.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Website address</span><span class=\"ds-field-hint\">The page you want audited.</span><input class=\"ds-input\" placeholder=\"https://example.org\"></label>",
+      "css": ".ds-field { display: block; font-family: 'Public Sans', system-ui, sans-serif; color: #161b17; } .ds-field-label { display: block; font-weight: 600; margin-bottom: 4px; } .ds-field-hint { display: block; font-size: 13px; line-height: 1.5; color: #5b6058; margin-bottom: 8px; } .ds-input { display: block; width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid #e2e4dc; border-radius: 6px; background: transparent; color: #161b17; font: inherit; font-size: 16px; caret-color: #1f4d3b; transition: border-color 150ms; } .ds-input::placeholder { color: #5b6058; } .ds-input:hover { border-color: #5b6058; } .ds-input:focus-visible { border-color: #1f4d3b; outline: 2px solid #1f4d3b; outline-offset: 0; }"
+    },
+    {
+      "name": "Top Navigation",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "Plain text nav over one hairline; current page in ink with a 2px pine underline.",
+      "html": "<nav class=\"ds-nav\"><a href=\"#\">Overview</a><a href=\"#\" aria-current=\"page\">Audits</a><a href=\"#\">Ad Grants</a><a href=\"#\">Content</a></nav>",
+      "css": ".ds-nav { display: flex; flex-wrap: wrap; gap: 4px 24px; padding-bottom: 12px; border-bottom: 1px solid #e2e4dc; font-family: 'Public Sans', system-ui, sans-serif; font-size: 16px; } .ds-nav a { color: #5b6058; text-decoration: none; padding: 4px 0; transition: color 150ms; } .ds-nav a:hover { color: #161b17; } .ds-nav a:focus-visible { outline: 2px solid #1f4d3b; outline-offset: 2px; border-radius: 2px; } .ds-nav a[aria-current=page] { color: #161b17; text-decoration: underline; text-decoration-color: #1f4d3b; text-decoration-thickness: 2px; text-underline-offset: 10px; }"
+    },
+    {
+      "name": "Score",
+      "kind": "custom",
+      "refersTo": "score",
+      "description": "Signature moment: Newsreader 72px numeral on paper, 2px ink rule (colour above a 'good' threshold is an open human decision), 'out of 100'.",
+      "html": "<div class=\"ds-score\" role=\"img\" aria-label=\"Score 68 out of 100\"><span class=\"ds-score-num\">68</span><span class=\"ds-score-rule\" style=\"--p:0.68\"></span><span class=\"ds-score-of\">out of 100</span></div>",
+      "css": ".ds-score { display: block; max-width: 240px; font-family: 'Public Sans', system-ui, sans-serif; } .ds-score-num { display: block; font-family: Newsreader, Georgia, serif; font-weight: 400; font-size: 72px; line-height: 1; color: #161b17; font-variant-numeric: tabular-nums lining-nums; } .ds-score-rule { display: block; height: 2px; width: 100%; margin: 12px 0 8px; background: #161b17; transform-origin: left center; transform: scaleX(var(--p, 1)); } .ds-score-of { display: block; color: #5b6058; }"
+    },
+    {
+      "name": "Finding",
+      "kind": "custom",
+      "refersTo": "mark",
+      "description": "Drawn SVG mark (one 1.75px stroke) plus ink status word; failing items carry an inline fix.",
+      "html": "<ul class=\"ds-findings\"><li><svg class=\"ds-mark ds-mark-attention\" viewBox=\"0 0 18 18\" aria-hidden=\"true\"><path d=\"M4.5 4.5l9 9M13.5 4.5l-9 9\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\"/></svg><div><p class=\"ds-f-title\">AI crawlers allowed</p><p class=\"ds-f-status\">Needs attention</p><p class=\"ds-f-detail\">robots.txt disallows GPTBot.</p><p class=\"ds-f-fix\"><a href=\"#\">Fix this on the Audits page</a></p></div></li><li><svg class=\"ds-mark ds-mark-pass\" viewBox=\"0 0 18 18\" aria-hidden=\"true\"><path d=\"M3.5 9.5l3.5 3.5 7.5-8\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><div><p class=\"ds-f-title\">Structured data</p><p class=\"ds-f-status\">Passed</p><p class=\"ds-f-detail\">Organization schema found.</p></div></li></ul>",
+      "css": ".ds-findings { list-style: none; padding: 0; margin: 0; font-family: 'Public Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.6; color: #161b17; } .ds-findings > li { display: flex; gap: 12px; } .ds-findings > li + li { margin-top: 24px; } .ds-findings p { margin: 0; } .ds-findings p + p { margin-top: 4px; } .ds-mark { flex: none; width: 18px; height: 18px; margin-top: 3px; } .ds-mark-pass { color: #1f4d3b; } .ds-mark-attention { color: #9c6b1f; } .ds-f-title { font-weight: 600; } .ds-f-status { font-size: 13px; line-height: 1.5; color: #161b17; } .ds-f-detail { color: #5b6058; } .ds-findings p.ds-f-fix { margin-top: 12px; } .ds-f-fix a { color: #1f4d3b; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; transition: text-decoration-thickness 150ms; } .ds-f-fix a:hover { text-decoration-thickness: 2px; } .ds-f-fix a:focus-visible { outline: 2px solid #1f4d3b; outline-offset: 2px; border-radius: 2px; }"
+    },
+    {
+      "name": "History Rows",
+      "kind": "custom",
+      "refersTo": "row-score",
+      "description": "Hairline-separated rows; URL left, Newsreader score right.",
+      "html": "<ul class=\"ds-rows\"><li><span class=\"ds-row-main\">hopefoundation.org<br><span class=\"ds-small\">3 Oct 2026, 7:12 pm</span></span><span class=\"ds-row-score\">68</span></li><li><span class=\"ds-row-main\">hopefoundation.org/about<br><span class=\"ds-small\">1 Oct 2026, 4:40 pm</span></span><span class=\"ds-row-score\">54</span></li></ul>",
+      "css": ".ds-rows { list-style: none; padding: 0; margin: 0; font-family: 'Public Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.6; color: #161b17; } .ds-rows > li { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; padding: 12px 0; border-bottom: 1px solid #e2e4dc; } .ds-rows > li:first-child { border-top: 1px solid #e2e4dc; } .ds-row-main { min-width: 0; overflow-wrap: anywhere; } .ds-small { font-size: 13px; line-height: 1.5; color: #5b6058; } .ds-row-score { font-family: Newsreader, Georgia, serif; font-size: 20px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Careful Colleague",
+    "overview": "SEctOr looks like a careful institution's working paper rather than a vendor's pitch. It uses a paper-and-ink base, one living colour (pine), and an editorial serif kept for the one number that matters. Everything is left-aligned and sits directly on paper. Structure comes from hairlines, not boxes, and depth comes from the order of the content, not from shadows. Density is moderate: generous vertical rhythm between findings and rows, with a 70ch measure on prose.\n\nThe score appearing is the hero. A 72px Newsreader numeral counts up from zero over about 600ms with ease-out, and a 2px rule beneath it draws in sync. That is the product's only orchestrated motion. Everything else is instant or a 150ms opacity or colour change. A failing check reads as guidance: ochre marks, the plain words \"Needs attention\", and an inline fix. It never uses red, alarm language or a badge.\n\nThe PDF rejects, on the user's authority: the warm-cream-and-terracotta AI look, glossy SaaS gradients, urgency timers, stock photography, dark-mode-with-neon hacker aesthetics, centred hero cards, card grids, and anything that reads as selling rather than explaining.",
+    "keyCharacteristics": [
+      "Paper ground, ink text, hairline structure; no card chrome, no shadows.",
+      "One accent (pine), spent only on primary actions/links and \"passed\".",
+      "Ochre means \"needs attention\". True red is reserved and unused.",
+      "Newsreader announces (score, page headlines, history-row scores); Public Sans explains (everything else, including the wordmark).",
+      "One 6px radius; one 4-to-64px spacing scale.",
+      "Pass/fail is always a drawn mark plus a word, never colour alone."
+    ],
+    "rules": [
+      { "name": "The Two Jobs Rule", "body": "Pine is spent on exactly two things: primary actions/links and \"this passed\". A third use case gets ink or ink-muted, never a second accent.", "section": "colors" },
+      { "name": "The Ink Words Rule", "body": "Spec ochre on paper (4.30:1) and spec dark pine on ink (4.29:1) fall below AA for small text, so the hex values stay as specified but they are never used as small-text colour. Status words (\"Passed\", \"Needs attention\") are set in ink. The colour lives on the drawn SVG mark beside them, a non-text graphic that needs only 3:1.", "section": "colors" },
+      { "name": "The Paper-Text Dark Rule", "body": "In dark mode, links and buttons set their text in paper (`ink-dark`) and carry pine only as decoration. Links get a pine underline. Buttons become transparent with a 2px pine border, replacing the light-mode pine fill. Quiet buttons keep their 1px hairline.", "section": "colors" },
+      { "name": "The Undecided Rule Colour", "body": "The score rule is always ink as shipped. The PDF suggests pine \"when the score is good\", but whether the rule turns pine above a \"good\" threshold, and what that threshold is, remains an **open human decision**. Until someone decides, keep it ink. Do not invent a threshold.", "section": "colors" },
+      { "name": "The Announce/Explain Rule", "body": "Newsreader appears only on the score numeral, page headlines, and score figures in history rows. The wordmark, section headings, buttons, labels and body are Public Sans.", "section": "typography" },
+      { "name": "The Sentence Case Rule", "body": "No all-caps labels and no tracked uppercase anywhere. De-emphasise with ink-muted and size, not case.", "section": "typography" },
+      { "name": "The Scale-Only Rule", "body": "Every margin, padding and gap comes from 4/8/12/16/24/32/48/64px (`--s-1` to `--s-8`). There are no arbitrary 13px or 22px offsets.", "section": "layout" },
+      { "name": "The Hairline-Before-Shadow Rule", "body": "A one-pixel `line` border does the job before any shadow is considered. There are no drop-shadows under cards, because there are no cards.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do place the score directly on paper, left-aligned, with an ink rule and \"out of 100\" beneath it.",
+      "Do pair every pass/fail with a drawn SVG mark and the words \"Passed\" or \"Needs attention\" in ink.",
+      "Do keep pine to primary actions/links, the pass mark, focus, active-nav and selection states.",
+      "Do take every margin, padding and gap from the 4/8/12/16/24/32/48/64px scale.",
+      "Do use a single 6px radius and 1px hairlines for all structure.",
+      "Do keep hover and focus changes to 150ms opacity/colour/underline-thickness, and honour `prefers-reduced-motion` everywhere, including the count-up.",
+      "Do keep the score rule ink until a human decides on a \"good\" threshold."
+    ],
+    "donts": [
+      "Don't set small text in ochre on paper or in dark pine on ink. Both are below AA at 13 to 16px.",
+      "Don't use glyph or font icons (✓ ✗ ⚠) for pass/fail. Marks are drawn SVG in one stroke weight.",
+      "Don't use Newsreader for the wordmark, section headings, buttons or body.",
+      "Don't introduce shadows, gradients, card grids, centred hero cards, or a second accent colour.",
+      "Don't use red for failing checks or form errors. True red (#B3261E) is reserved for real destructive states.",
+      "Don't use all-caps or tracked-uppercase labels.",
+      "Don't animate anything other than the score count-up and its rule."
+    ]
+  }
+}

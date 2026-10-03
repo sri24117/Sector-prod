@@ -18,3 +18,6 @@ coverage/
 *.pem
 *.key
 .claude/settings.local.json
+
+# Impeccable review captures (regenerated per review)
+apps/web/.impeccable/review/
