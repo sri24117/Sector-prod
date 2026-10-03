@@ -10,6 +10,11 @@
 #   3. web and api join the `coolify` network with Traefik labels for
 #      APP_DOMAIN / API_DOMAIN, HTTPS via Traefik's `letsencrypt` resolver,
 #      and an HTTP -> HTTPS redirect.
+#   5. Postgres and Redis get unique aliases (sector-postgres, sector-redis).
+#      The api/web containers also sit on the shared `coolify` network, where
+#      Coolify's own database answers to "postgres" and its Redis to "redis";
+#      the generic names would reach the wrong server. .env must use the
+#      sector-* hostnames in DATABASE_URL and REDIS_URL.
 #   4. TRUST_PROXY covers Traefik's address on the coolify network (already a
 #      private range in the main file), so per-client rate limits keep working.
 
@@ -19,9 +24,19 @@ services:
 
   postgres:
     ports: !reset []
+    networks:
+      default:
+        aliases: [sector-postgres]
 
   redis:
     ports: !reset []
+    networks:
+      default:
+        aliases: [sector-redis]
+
+  backup:
+    environment:
+      PGHOST: sector-postgres
 
   api:
     networks: [default, coolify]

@@ -50,6 +50,9 @@ dc up -d
 `infra/compose.coolify.yml` leaves the bundled Caddy off, publishes no host ports
 for Postgres/Redis (so nothing clashes with other apps' databases), and labels
 `web`/`api` for Traefik with HTTPS via its `letsencrypt` resolver, plus an
-HTTP->HTTPS redirect. `.env` must set `APP_DOMAIN` and `API_DOMAIN`. Certificates
+HTTP->HTTPS redirect. `.env` must set `APP_DOMAIN` and `API_DOMAIN`, and use the
+unique hostnames `sector-postgres` / `sector-redis` in `DATABASE_URL` / `REDIS_URL`:
+on the shared `coolify` network, Coolify's own database answers to `postgres` and
+its Redis to `redis`. Certificates
 are issued on the first request once DNS points at the server. Tested against
 `traefik:v3.6` with Coolify's entrypoint/provider flags.
