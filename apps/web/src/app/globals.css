@@ -250,6 +250,7 @@ select.input { appearance: auto; }
   transform-origin: left center;
   transform: scaleX(var(--score-progress, 1));
 }
+.score-rule[data-good] { background: var(--pine); }
 .score-of { display: block; color: var(--ink-muted); }
 
 /* ---------- Findings (plain list, 24px rhythm) ---------- */

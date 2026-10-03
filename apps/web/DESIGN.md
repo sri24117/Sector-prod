@@ -168,7 +168,7 @@ The PDF reserves true red (#B3261E) for real destructive or error states, such a
 
 **The Paper-Text Dark Rule.** In dark mode, links and buttons set their text in paper (`ink-dark`) and carry pine only as decoration. Links get a pine underline. Buttons become transparent with a 2px pine border, replacing the light-mode pine fill. Quiet buttons keep their 1px hairline.
 
-**The Undecided Rule Colour.** The score rule is always ink as shipped. The PDF suggests pine "when the score is good", but whether the rule turns pine above a "good" threshold, and what that threshold is, remains an **open human decision**. Until someone decides, keep it ink. Do not invent a threshold.
+**The Good-Score Rule.** The score rule is ink below 70 and pine at 70 or above (`GOOD_SCORE` in `src/lib/ui.tsx`). This is the PDF's "pine when the score is good" with the threshold set by product decision on 2026-10-03. Below 70 the rule stays neutral ink, not ochre: a low score is guidance, not an alarm.
 
 ## Typography
 
@@ -256,7 +256,7 @@ Used for history, consents and alerts. Each is a flex row with the main text lef
 - **Do** take every margin, padding and gap from the 4/8/12/16/24/32/48/64px scale.
 - **Do** use a single 6px radius and 1px hairlines for all structure.
 - **Do** keep hover and focus changes to 150ms opacity/colour/underline-thickness, and honour `prefers-reduced-motion` everywhere, including the count-up.
-- **Do** keep the score rule ink until a human decides on a "good" threshold.
+- **Do** keep the score rule ink below 70 and pine at 70 or above; change the threshold only in `GOOD_SCORE`.
 
 ### Don't:
 - **Don't** set small text in ochre on paper or in dark pine on ink. Both are below AA at 13 to 16px.

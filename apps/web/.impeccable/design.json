@@ -5,49 +5,309 @@
   "source": "docs/design/design-system.pdf (binding, approved by the user); shipped in apps/web/src/app/globals.css and apps/web/src/lib/ui.tsx",
   "extensions": {
     "colorMeta": {
-      "paper": { "role": "neutral", "displayName": "Sage Paper", "canonical": "#f6f7f3", "tonalRamp": ["#232521", "#3b3e38", "#575b53", "#787c73", "#9b9f95", "#c0c3b9", "#e2e4dc", "#f6f7f3"] },
-      "ink": { "role": "neutral", "displayName": "Green-Black Ink", "canonical": "#161b17", "tonalRamp": ["#161b17", "#2e352f", "#474f48", "#626a63", "#7f877f", "#a0a69f", "#c6cac4", "#eceee9"] },
-      "ink-muted": { "role": "neutral", "displayName": "Muted Ink", "canonical": "#5b6058", "tonalRamp": ["#1c1e1b", "#30332e", "#464a44", "#5b6058", "#7a7f76", "#9ca098", "#c1c4bd", "#e6e8e3"] },
-      "line": { "role": "neutral", "displayName": "Hairline", "canonical": "#e2e4dc", "tonalRamp": ["#22241f", "#3b3e37", "#585c53", "#797d73", "#9da196", "#c1c4ba", "#e2e4dc", "#f4f5f0"] },
-      "pine": { "role": "primary", "displayName": "Pine", "canonical": "#1f4d3b", "tonalRamp": ["#0d2219", "#1f4d3b", "#2d6550", "#4a8a6f", "#6ea58c", "#96c1ac", "#c1dccd", "#e6f2eb"] },
-      "ochre": { "role": "secondary", "displayName": "Attention Ochre", "canonical": "#9c6b1f", "tonalRamp": ["#2e1f08", "#5a3d11", "#9c6b1f", "#b67f2e", "#c99445", "#dbb377", "#ebd2aa", "#f8eedc"] },
-      "on-pine": { "role": "neutral", "displayName": "Paper on Pine", "canonical": "#f6f7f3", "tonalRamp": ["#232521", "#3b3e38", "#575b53", "#787c73", "#9b9f95", "#c0c3b9", "#e2e4dc", "#f6f7f3"] },
-      "paper-dark": { "role": "neutral", "displayName": "Ink Ground (dark mode)", "canonical": "#161b17", "tonalRamp": ["#161b17", "#2e352f", "#474f48", "#626a63", "#7f877f", "#a0a69f", "#c6cac4", "#eceee9"] },
-      "ink-dark": { "role": "neutral", "displayName": "Paper Text (dark mode)", "canonical": "#f6f7f3", "tonalRamp": ["#232521", "#3b3e38", "#575b53", "#787c73", "#9b9f95", "#c0c3b9", "#e2e4dc", "#f6f7f3"] },
-      "ink-muted-dark": { "role": "neutral", "displayName": "Muted Ink (dark mode, build extension)", "canonical": "#a9ada4", "tonalRamp": ["#20221f", "#373a35", "#52564f", "#70746c", "#8f938a", "#a9ada4", "#cdd0c9", "#eef0eb"] },
-      "line-dark": { "role": "neutral", "displayName": "Hairline (dark mode, build extension)", "canonical": "#2e352f", "tonalRamp": ["#161b17", "#2e352f", "#474f48", "#626a63", "#7f877f", "#a0a69f", "#c6cac4", "#eceee9"] },
-      "pine-dark": { "role": "primary", "displayName": "Light Pine (dark mode)", "canonical": "#4a8a6f", "tonalRamp": ["#0d2219", "#1f4d3b", "#2d6550", "#4a8a6f", "#6ea58c", "#96c1ac", "#c1dccd", "#e6f2eb"] },
-      "ochre-dark": { "role": "secondary", "displayName": "Light Ochre (dark mode)", "canonical": "#c99445", "tonalRamp": ["#2e1f08", "#5a3d11", "#9c6b1f", "#b67f2e", "#c99445", "#dbb377", "#ebd2aa", "#f8eedc"] },
-      "on-pine-dark": { "role": "neutral", "displayName": "Ink on Pine (dark mode)", "canonical": "#161b17", "tonalRamp": ["#161b17", "#2e352f", "#474f48", "#626a63", "#7f877f", "#a0a69f", "#c6cac4", "#eceee9"] }
+      "paper": {
+        "role": "neutral",
+        "displayName": "Sage Paper",
+        "canonical": "#f6f7f3",
+        "tonalRamp": [
+          "#232521",
+          "#3b3e38",
+          "#575b53",
+          "#787c73",
+          "#9b9f95",
+          "#c0c3b9",
+          "#e2e4dc",
+          "#f6f7f3"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Green-Black Ink",
+        "canonical": "#161b17",
+        "tonalRamp": [
+          "#161b17",
+          "#2e352f",
+          "#474f48",
+          "#626a63",
+          "#7f877f",
+          "#a0a69f",
+          "#c6cac4",
+          "#eceee9"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "#5b6058",
+        "tonalRamp": [
+          "#1c1e1b",
+          "#30332e",
+          "#464a44",
+          "#5b6058",
+          "#7a7f76",
+          "#9ca098",
+          "#c1c4bd",
+          "#e6e8e3"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#e2e4dc",
+        "tonalRamp": [
+          "#22241f",
+          "#3b3e37",
+          "#585c53",
+          "#797d73",
+          "#9da196",
+          "#c1c4ba",
+          "#e2e4dc",
+          "#f4f5f0"
+        ]
+      },
+      "pine": {
+        "role": "primary",
+        "displayName": "Pine",
+        "canonical": "#1f4d3b",
+        "tonalRamp": [
+          "#0d2219",
+          "#1f4d3b",
+          "#2d6550",
+          "#4a8a6f",
+          "#6ea58c",
+          "#96c1ac",
+          "#c1dccd",
+          "#e6f2eb"
+        ]
+      },
+      "ochre": {
+        "role": "secondary",
+        "displayName": "Attention Ochre",
+        "canonical": "#9c6b1f",
+        "tonalRamp": [
+          "#2e1f08",
+          "#5a3d11",
+          "#9c6b1f",
+          "#b67f2e",
+          "#c99445",
+          "#dbb377",
+          "#ebd2aa",
+          "#f8eedc"
+        ]
+      },
+      "on-pine": {
+        "role": "neutral",
+        "displayName": "Paper on Pine",
+        "canonical": "#f6f7f3",
+        "tonalRamp": [
+          "#232521",
+          "#3b3e38",
+          "#575b53",
+          "#787c73",
+          "#9b9f95",
+          "#c0c3b9",
+          "#e2e4dc",
+          "#f6f7f3"
+        ]
+      },
+      "paper-dark": {
+        "role": "neutral",
+        "displayName": "Ink Ground (dark mode)",
+        "canonical": "#161b17",
+        "tonalRamp": [
+          "#161b17",
+          "#2e352f",
+          "#474f48",
+          "#626a63",
+          "#7f877f",
+          "#a0a69f",
+          "#c6cac4",
+          "#eceee9"
+        ]
+      },
+      "ink-dark": {
+        "role": "neutral",
+        "displayName": "Paper Text (dark mode)",
+        "canonical": "#f6f7f3",
+        "tonalRamp": [
+          "#232521",
+          "#3b3e38",
+          "#575b53",
+          "#787c73",
+          "#9b9f95",
+          "#c0c3b9",
+          "#e2e4dc",
+          "#f6f7f3"
+        ]
+      },
+      "ink-muted-dark": {
+        "role": "neutral",
+        "displayName": "Muted Ink (dark mode, build extension)",
+        "canonical": "#a9ada4",
+        "tonalRamp": [
+          "#20221f",
+          "#373a35",
+          "#52564f",
+          "#70746c",
+          "#8f938a",
+          "#a9ada4",
+          "#cdd0c9",
+          "#eef0eb"
+        ]
+      },
+      "line-dark": {
+        "role": "neutral",
+        "displayName": "Hairline (dark mode, build extension)",
+        "canonical": "#2e352f",
+        "tonalRamp": [
+          "#161b17",
+          "#2e352f",
+          "#474f48",
+          "#626a63",
+          "#7f877f",
+          "#a0a69f",
+          "#c6cac4",
+          "#eceee9"
+        ]
+      },
+      "pine-dark": {
+        "role": "primary",
+        "displayName": "Light Pine (dark mode)",
+        "canonical": "#4a8a6f",
+        "tonalRamp": [
+          "#0d2219",
+          "#1f4d3b",
+          "#2d6550",
+          "#4a8a6f",
+          "#6ea58c",
+          "#96c1ac",
+          "#c1dccd",
+          "#e6f2eb"
+        ]
+      },
+      "ochre-dark": {
+        "role": "secondary",
+        "displayName": "Light Ochre (dark mode)",
+        "canonical": "#c99445",
+        "tonalRamp": [
+          "#2e1f08",
+          "#5a3d11",
+          "#9c6b1f",
+          "#b67f2e",
+          "#c99445",
+          "#dbb377",
+          "#ebd2aa",
+          "#f8eedc"
+        ]
+      },
+      "on-pine-dark": {
+        "role": "neutral",
+        "displayName": "Ink on Pine (dark mode)",
+        "canonical": "#161b17",
+        "tonalRamp": [
+          "#161b17",
+          "#2e352f",
+          "#474f48",
+          "#626a63",
+          "#7f877f",
+          "#a0a69f",
+          "#c6cac4",
+          "#eceee9"
+        ]
+      }
     },
     "contrast": [
-      { "pair": "ochre #9c6b1f on paper #f6f7f3", "ratio": "4.30:1", "use": "Drawn attention mark only (non-text, 3:1 needed); never small text." },
-      { "pair": "pine-dark #4a8a6f on paper-dark #161b17", "ratio": "4.29:1", "use": "Borders, underlines, marks, focus only; link and button text is paper in dark mode." },
-      { "pair": "ink-muted #5b6058 on paper #f6f7f3", "ratio": "about 6:1", "use": "Secondary text." }
+      {
+        "pair": "ochre #9c6b1f on paper #f6f7f3",
+        "ratio": "4.30:1",
+        "use": "Drawn attention mark only (non-text, 3:1 needed); never small text."
+      },
+      {
+        "pair": "pine-dark #4a8a6f on paper-dark #161b17",
+        "ratio": "4.29:1",
+        "use": "Borders, underlines, marks, focus only; link and button text is paper in dark mode."
+      },
+      {
+        "pair": "ink-muted #5b6058 on paper #f6f7f3",
+        "ratio": "about 6:1",
+        "use": "Secondary text."
+      }
     ],
     "openDecisions": [
-      { "name": "Score rule colour", "status": "OPEN HUMAN DECISION", "detail": "Shipped always ink. Whether it turns pine above a 'good' threshold, and what that threshold is, is undecided." }
+      {
+        "name": "Score rule colour",
+        "status": "DECIDED 2026-10-03",
+        "detail": "Pine at a score of 70 or above (GOOD_SCORE), ink below."
+      }
     ],
     "typographyMeta": {
-      "score": { "displayName": "Score", "purpose": "The audit score numeral only; counts up over 600ms." },
-      "headline": { "displayName": "Page Headline", "purpose": "One per screen." },
-      "row-score": { "displayName": "Row Score", "purpose": "Score figures in history rows." },
-      "title": { "displayName": "Section Heading", "purpose": "Section headings and the overview aside headings." },
-      "wordmark": { "displayName": "Wordmark", "purpose": "\"SEctOr\" in the shell bar and on public pages; Public Sans, not the serif." },
-      "body": { "displayName": "Body", "purpose": "Everything else; prose capped at 70ch." },
-      "body-strong": { "displayName": "Body Strong", "purpose": "Field labels, finding titles, button text, organisation name." },
-      "small": { "displayName": "Small / Caption", "purpose": "Captions, timestamps, hints, render caveat; ink-muted except finding status words, which are ink." }
+      "score": {
+        "displayName": "Score",
+        "purpose": "The audit score numeral only; counts up over 600ms."
+      },
+      "headline": {
+        "displayName": "Page Headline",
+        "purpose": "One per screen."
+      },
+      "row-score": {
+        "displayName": "Row Score",
+        "purpose": "Score figures in history rows."
+      },
+      "title": {
+        "displayName": "Section Heading",
+        "purpose": "Section headings and the overview aside headings."
+      },
+      "wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "\"SEctOr\" in the shell bar and on public pages; Public Sans, not the serif."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Everything else; prose capped at 70ch."
+      },
+      "body-strong": {
+        "displayName": "Body Strong",
+        "purpose": "Field labels, finding titles, button text, organisation name."
+      },
+      "small": {
+        "displayName": "Small / Caption",
+        "purpose": "Captions, timestamps, hints, render caveat; ink-muted except finding status words, which are ink."
+      }
     },
     "shadows": [],
     "motion": [
-      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Declared token; the score count-up itself uses a cubic ease-out in JS (1 - (1-p)^3)." },
-      { "name": "score-count-up", "value": "600ms", "purpose": "The one orchestrated moment: numeral 0 to score, rule scaleX in sync. Instant under prefers-reduced-motion." },
-      { "name": "state-change", "value": "150ms", "purpose": "Opacity, colour, border-colour and underline-thickness on hover/focus. Nothing else animates." }
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Declared token; the score count-up itself uses a cubic ease-out in JS (1 - (1-p)^3)."
+      },
+      {
+        "name": "score-count-up",
+        "value": "600ms",
+        "purpose": "The one orchestrated moment: numeral 0 to score, rule scaleX in sync. Instant under prefers-reduced-motion."
+      },
+      {
+        "name": "state-change",
+        "value": "150ms",
+        "purpose": "Opacity, colour, border-colour and underline-thickness on hover/focus. Nothing else animates."
+      }
     ],
     "breakpoints": [
-      { "name": "compact", "value": "max-width: 480px", "purpose": "Tighter page padding; user block wraps to its own line." },
-      { "name": "columns", "value": "min-width: 880px", "purpose": "Overview splits 65/35." },
-      { "name": "container", "value": "1040px", "purpose": "Shell and page max width; narrow pages 560px." }
+      {
+        "name": "compact",
+        "value": "max-width: 480px",
+        "purpose": "Tighter page padding; user block wraps to its own line."
+      },
+      {
+        "name": "columns",
+        "value": "min-width: 880px",
+        "purpose": "Overview splits 65/35."
+      },
+      {
+        "name": "container",
+        "value": "1040px",
+        "purpose": "Shell and page max width; narrow pages 560px."
+      }
     ]
   },
   "components": [
@@ -95,7 +355,7 @@
       "name": "Score",
       "kind": "custom",
       "refersTo": "score",
-      "description": "Signature moment: Newsreader 72px numeral on paper, 2px ink rule (colour above a 'good' threshold is an open human decision), 'out of 100'.",
+      "description": "Signature moment: Newsreader 72px numeral on paper, 2px rule, pine at 70 or above, ink below, 'out of 100'.",
       "html": "<div class=\"ds-score\" role=\"img\" aria-label=\"Score 68 out of 100\"><span class=\"ds-score-num\">68</span><span class=\"ds-score-rule\" style=\"--p:0.68\"></span><span class=\"ds-score-of\">out of 100</span></div>",
       "css": ".ds-score { display: block; max-width: 240px; font-family: 'Public Sans', system-ui, sans-serif; } .ds-score-num { display: block; font-family: Newsreader, Georgia, serif; font-weight: 400; font-size: 72px; line-height: 1; color: #161b17; font-variant-numeric: tabular-nums lining-nums; } .ds-score-rule { display: block; height: 2px; width: 100%; margin: 12px 0 8px; background: #161b17; transform-origin: left center; transform: scaleX(var(--p, 1)); } .ds-score-of { display: block; color: #5b6058; }"
     },
@@ -128,14 +388,46 @@
       "Pass/fail is always a drawn mark plus a word, never colour alone."
     ],
     "rules": [
-      { "name": "The Two Jobs Rule", "body": "Pine is spent on exactly two things: primary actions/links and \"this passed\". A third use case gets ink or ink-muted, never a second accent.", "section": "colors" },
-      { "name": "The Ink Words Rule", "body": "Spec ochre on paper (4.30:1) and spec dark pine on ink (4.29:1) fall below AA for small text, so the hex values stay as specified but they are never used as small-text colour. Status words (\"Passed\", \"Needs attention\") are set in ink. The colour lives on the drawn SVG mark beside them, a non-text graphic that needs only 3:1.", "section": "colors" },
-      { "name": "The Paper-Text Dark Rule", "body": "In dark mode, links and buttons set their text in paper (`ink-dark`) and carry pine only as decoration. Links get a pine underline. Buttons become transparent with a 2px pine border, replacing the light-mode pine fill. Quiet buttons keep their 1px hairline.", "section": "colors" },
-      { "name": "The Undecided Rule Colour", "body": "The score rule is always ink as shipped. The PDF suggests pine \"when the score is good\", but whether the rule turns pine above a \"good\" threshold, and what that threshold is, remains an **open human decision**. Until someone decides, keep it ink. Do not invent a threshold.", "section": "colors" },
-      { "name": "The Announce/Explain Rule", "body": "Newsreader appears only on the score numeral, page headlines, and score figures in history rows. The wordmark, section headings, buttons, labels and body are Public Sans.", "section": "typography" },
-      { "name": "The Sentence Case Rule", "body": "No all-caps labels and no tracked uppercase anywhere. De-emphasise with ink-muted and size, not case.", "section": "typography" },
-      { "name": "The Scale-Only Rule", "body": "Every margin, padding and gap comes from 4/8/12/16/24/32/48/64px (`--s-1` to `--s-8`). There are no arbitrary 13px or 22px offsets.", "section": "layout" },
-      { "name": "The Hairline-Before-Shadow Rule", "body": "A one-pixel `line` border does the job before any shadow is considered. There are no drop-shadows under cards, because there are no cards.", "section": "elevation" }
+      {
+        "name": "The Two Jobs Rule",
+        "body": "Pine is spent on exactly two things: primary actions/links and \"this passed\". A third use case gets ink or ink-muted, never a second accent.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink Words Rule",
+        "body": "Spec ochre on paper (4.30:1) and spec dark pine on ink (4.29:1) fall below AA for small text, so the hex values stay as specified but they are never used as small-text colour. Status words (\"Passed\", \"Needs attention\") are set in ink. The colour lives on the drawn SVG mark beside them, a non-text graphic that needs only 3:1.",
+        "section": "colors"
+      },
+      {
+        "name": "The Paper-Text Dark Rule",
+        "body": "In dark mode, links and buttons set their text in paper (`ink-dark`) and carry pine only as decoration. Links get a pine underline. Buttons become transparent with a 2px pine border, replacing the light-mode pine fill. Quiet buttons keep their 1px hairline.",
+        "section": "colors"
+      },
+      {
+        "name": "The Good-Score Rule",
+        "body": "**The Good-Score Rule.** The score rule is ink below 70 and pine at 70 or above (`GOOD_SCORE` in `src/lib/ui.tsx`). This is the PDF's \"pine when the score is good\" with the threshold set by product decision on 2026-10-03. Below 70 the rule stays neutral ink, not ochre: a low score is guidance, not an alarm.",
+        "section": "colors"
+      },
+      {
+        "name": "The Announce/Explain Rule",
+        "body": "Newsreader appears only on the score numeral, page headlines, and score figures in history rows. The wordmark, section headings, buttons, labels and body are Public Sans.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sentence Case Rule",
+        "body": "No all-caps labels and no tracked uppercase anywhere. De-emphasise with ink-muted and size, not case.",
+        "section": "typography"
+      },
+      {
+        "name": "The Scale-Only Rule",
+        "body": "Every margin, padding and gap comes from 4/8/12/16/24/32/48/64px (`--s-1` to `--s-8`). There are no arbitrary 13px or 22px offsets.",
+        "section": "layout"
+      },
+      {
+        "name": "The Hairline-Before-Shadow Rule",
+        "body": "A one-pixel `line` border does the job before any shadow is considered. There are no drop-shadows under cards, because there are no cards.",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Do place the score directly on paper, left-aligned, with an ink rule and \"out of 100\" beneath it.",
@@ -144,7 +436,7 @@
       "Do take every margin, padding and gap from the 4/8/12/16/24/32/48/64px scale.",
       "Do use a single 6px radius and 1px hairlines for all structure.",
       "Do keep hover and focus changes to 150ms opacity/colour/underline-thickness, and honour `prefers-reduced-motion` everywhere, including the count-up.",
-      "Do keep the score rule ink until a human decides on a \"good\" threshold."
+      "Do keep the score rule ink below 70 and pine at 70 or above; change the threshold only in GOOD_SCORE."
     ],
     "donts": [
       "Don't set small text in ochre on paper or in dark pine on ink. Both are below AA at 13 to 16px.",

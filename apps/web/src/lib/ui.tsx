@@ -96,6 +96,9 @@ export function Message({ text, tone = "attention" }: { text: string | null; ton
   );
 }
 
+/** Product decision (2026-10-03): a score of 70 or more is "good", and only then is the rule pine. */
+export const GOOD_SCORE = 70;
+
 /** The product's one orchestrated moment: 0 → score over ~600ms, the rule drawing in sync. */
 export function Score({ value, animate = true }: { value: number; animate?: boolean }) {
   const [shown, setShown] = useState(animate ? 0 : value);
@@ -116,7 +119,7 @@ export function Score({ value, animate = true }: { value: number; animate?: bool
   return (
     <div className="score" role="img" aria-label={`Score ${value} out of 100`}>
       <span className="score-num" aria-hidden="true">{shown}</span>
-      <span className="score-rule" aria-hidden="true" style={{ ["--score-progress" as string]: progress }} />
+      <span className="score-rule" aria-hidden="true" data-good={value >= GOOD_SCORE ? "" : undefined} style={{ ["--score-progress" as string]: progress }} />
       <span className="score-of" aria-hidden="true">out of 100</span>
     </div>
   );
