@@ -55,7 +55,8 @@ export default function LoginPage() {
           <button type="submit" className="btn btn-block" disabled={loading}>{loading ? "Logging in…" : "Log in"}</button>
         </div>
       </form>
-      <p className="small" style={{ marginTop: "var(--s-5)" }}>No account yet? <a href="/signup">Create one</a></p>
+      <p className="small" style={{ marginTop: "var(--s-5)" }}><a href="/forgot-password">Forgot your password?</a></p>
+      <p className="small" style={{ marginTop: "var(--s-2)" }}>No account yet? <a href="/signup">Create one</a></p>
     </main>
   );
 }

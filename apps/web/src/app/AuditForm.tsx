@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import { FindingList, RenderCaveat, Score, Message, when, type FindingLike } from "../lib/ui";
+import { track } from "../lib/api";
 
 interface AuditResult { url: string; score: number; runAt: string; checks: FindingLike[] }
 type State =
@@ -40,9 +41,11 @@ export default function AuditForm() {
     }
   }
 
-  // Connect-intent signal for the funnel (feature-spec-slice1): logged, then the visitor goes to signup.
+  // Connect-intent signal for the funnel (feature-spec-slice1): recorded, then the visitor
+  // goes to signup with the audited site carried over.
+  const signupFor = (r: AuditResult) => `/signup?url=${encodeURIComponent(r.url)}`;
   const fixLink = (r: AuditResult) => (
-    <a href="/signup" onClick={() => console.log("connect_intent_clicked", { url: r.url })}>Create an account to fix this</a>
+    <a href={signupFor(r)} onClick={() => track("fix_clicked", r.url)}>Create an account to fix this</a>
   );
 
   return (
@@ -81,7 +84,7 @@ export default function AuditForm() {
                 With an account, SEctOr applies fixes directly to your WordPress site and re-checks the result.
               </p>
               <div className="actions">
-                <a className="btn" href="/signup" onClick={() => console.log("connect_intent_clicked", { url: state.result.url })}>Create an account</a>
+                <a className="btn" href={signupFor(state.result)} onClick={() => track("connect_cta_clicked", state.result.url)}>Create an account</a>
               </div>
             </div>
           </div>

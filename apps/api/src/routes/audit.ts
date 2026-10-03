@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { runAudit } from "@sector/crawler";
 import { isSafePublicUrl } from "../lib/ssrf.js";
+import { recordFunnelEvent } from "../lib/funnel.js";
 
 // Slice 1 v1 — see docs/plans/feature-spec-slice1-audit-funnel-v1.md.
 // Deliberately synchronous, in-process, no persistence: that spec explains
@@ -63,6 +64,7 @@ export async function registerAuditRoutes(app: FastifyInstance): Promise<void> {
 
     try {
       const result = await withTimeout(runAudit(normalized, { allowUrl: isSafePublicUrl }), CRAWL_TIMEOUT_MS);
+      await recordFunnelEvent({ event: "audit_run", url: result.url });
       return reply.status(200).send(result);
     } catch (err) {
       request.log.warn({ err, url: normalized }, "audit crawl failed");

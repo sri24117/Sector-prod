@@ -5,6 +5,8 @@ import { rawDb, scopedDb, schema } from "@sector/db";
 import { hashPassword, verifyPassword } from "../auth/password.js";
 import { generateSessionToken, hashSessionToken, sessionExpiry, setSessionCookie, clearSessionCookie, SESSION_COOKIE_NAME } from "../auth/session.js";
 import { authenticate, logSecurityEvent } from "../auth/middleware.js";
+import { consumeResetToken } from "../auth/password-reset.js";
+import { recordFunnelEvent } from "../lib/funnel.js";
 
 // Slice 2 — see docs/plans/phase-0-1-roadmap.md and the ADR-0002/ADR-0005
 // confirmations in conversation history. Signup self-declares FCRA/PAN/
@@ -23,7 +25,15 @@ const SignupSchema = z.object({
   section12ANumber: z.string().max(50).optional(),
   section80GNumber: z.string().max(50).optional(),
   websiteUrl: z.string().url().optional(),
+  // Set by the web app when the visitor arrived from a free audit (funnel measurement only).
+  fromAudit: z.boolean().optional(),
 });
+
+const ResetRequestSchema = z.object({ email: z.string().email() });
+const ResetConfirmSchema = z.object({ token: z.string().min(16).max(200), password: z.string().min(10).max(200) });
+const RESET_REQUEST_ACK = {
+  message: "If an account exists for that email, a reset link will be sent to you. If nothing arrives within a working day, contact SEctOr.",
+};
 
 const LoginSchema = z.object({
   email: z.string().email(),
@@ -99,6 +109,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
           action: "signup_success",
           result: "success",
         });
+        if (input.fromAudit) await recordFunnelEvent({ event: "signup_from_audit", url: input.websiteUrl, organizationId: result.org.id });
 
         return reply.status(201).send({
           organizationId: result.org.id,
@@ -160,6 +171,28 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(200).send({ userId: user.id });
     },
   );
+
+  // Step 1 of the pilot reset flow: record the request for ops (scripts/reset-link.ts
+  // issues the link). Same answer whether or not the account exists: no enumeration.
+  app.post("/auth/password-reset/request", { config: { rateLimit: { max: 5, timeWindow: "10 minutes" } } }, async (request, reply) => {
+    const parsed = ResetRequestSchema.safeParse(request.body);
+    if (!parsed.success) return reply.status(400).send({ error: "invalid_input", message: "Enter the email you signed up with." });
+    const [user] = await rawDb.select().from(schema.users).where(eq(schema.users.email, parsed.data.email.toLowerCase())).limit(1);
+    await logSecurityEvent({ userId: user?.id, action: "password_reset_requested", result: user ? "success" : "denied", detail: user ? undefined : "unknown_email" });
+    return reply.status(202).send(RESET_REQUEST_ACK);
+  });
+
+  app.post("/auth/password-reset/confirm", { config: { rateLimit: { max: 10, timeWindow: "10 minutes" } } }, async (request, reply) => {
+    const parsed = ResetConfirmSchema.safeParse(request.body);
+    if (!parsed.success) return reply.status(400).send({ error: "invalid_input", message: "Choose a password of at least 10 characters." });
+    const userId = await consumeResetToken(parsed.data.token, await hashPassword(parsed.data.password));
+    if (!userId) {
+      await logSecurityEvent({ action: "password_reset_failed", result: "denied" });
+      return reply.status(400).send({ error: "invalid_token", message: "This reset link has expired or was already used. Ask SEctOr for a new one." });
+    }
+    await logSecurityEvent({ userId, action: "password_reset_completed", result: "success" });
+    return reply.status(200).send({ message: "Your password has been changed. Log in with your new password." });
+  });
 
   app.post("/auth/logout", async (request, reply) => {
     const token = request.cookies[SESSION_COOKIE_NAME];

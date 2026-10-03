@@ -23,7 +23,16 @@ function Audits({ me }: { me: Me }) {
 
   const load = useCallback(async () => setAudits(await api<Audit[]>("/audits")), []);
   useEffect(() => {
-    void guard(load);
+    // First visit after signup (/audits?first=1): run the first audit of the org website right away.
+    const first = new URLSearchParams(window.location.search).get("first") === "1";
+    void guard(async () => {
+      const list = await api<Audit[]>("/audits");
+      setAudits(list);
+      if (first && list.length === 0 && canWrite) {
+        window.history.replaceState(null, "", "/audits");
+        await run();
+      }
+    });
     api<Connection>("/connections/wordpress").then(setConn).catch(() => setConn(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

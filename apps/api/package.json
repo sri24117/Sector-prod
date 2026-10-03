@@ -12,7 +12,9 @@
     "lint": "eslint src",
     "test": "vitest run",
     "clean": "rm -rf dist .turbo",
-    "seed:demo": "tsx src/scripts/seed-demo.ts"
+    "seed:demo": "tsx src/scripts/seed-demo.ts",
+    "reset-link": "tsx src/scripts/reset-link.ts",
+    "funnel": "tsx src/scripts/funnel-report.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
