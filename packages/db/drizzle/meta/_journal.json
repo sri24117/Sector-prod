@@ -15,6 +15,13 @@
       "when": 1790564800784,
       "tag": "0001_swift_toad",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791037660580,
+      "tag": "0002_reflective_madame_hydra",
+      "breakpoints": true
     }
   ]
 }

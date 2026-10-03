@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Field, Message } from "../../lib/ui";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -37,50 +38,25 @@ export default function LoginPage() {
   }
 
   return (
-    <main style={{ fontFamily: "system-ui", padding: "3rem 1.5rem", maxWidth: 400, margin: "0 auto" }}>
-      <h1>Log in</h1>
+    <main className="page page-narrow">
+      <a className="wordmark" href="/">SEctOr</a>
+      <div className="page-head" style={{ marginTop: "var(--s-7)" }}>
+        <h1 className="headline">Log in</h1>
+      </div>
       <form onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{ width: "100%", padding: "0.6rem 0.75rem", marginBottom: "0.75rem", border: "1px solid #ccc", borderRadius: 6 }}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={{ width: "100%", padding: "0.6rem 0.75rem", marginBottom: "0.75rem", border: "1px solid #ccc", borderRadius: 6 }}
-        />
-        {error && (
-          <p role="alert" style={{ color: "#b00020" }}>
-            {error}
-          </p>
-        )}
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: "100%",
-            padding: "0.75rem",
-            fontSize: "1rem",
-            borderRadius: 6,
-            border: "none",
-            background: "#111",
-            color: "#fff",
-            cursor: loading ? "default" : "pointer",
-          }}
-        >
-          {loading ? "Logging in…" : "Log in"}
-        </button>
+        <Field label="Email">
+          <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+        </Field>
+        <Field label="Password">
+          <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+        </Field>
+        <div className="actions">
+          {error && <div style={{ width: "100%" }}><Message text={error} /></div>}
+          <button type="submit" className="btn btn-block" disabled={loading}>{loading ? "Logging in…" : "Log in"}</button>
+        </div>
       </form>
-      <p style={{ marginTop: "1rem" }}>
-        No account yet? <a href="/signup">Create one</a>
-      </p>
+      <p className="small" style={{ marginTop: "var(--s-5)" }}><a href="/forgot-password">Forgot your password?</a></p>
+      <p className="small" style={{ marginTop: "var(--s-2)" }}>No account yet? <a href="/signup">Create one</a></p>
     </main>
   );
 }

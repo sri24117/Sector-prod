@@ -12,6 +12,7 @@ import { registerContentRoutes } from "./routes/content.js";
 import type { LlmProvider } from "@sector/ai";
 import type { GoogleAdsGateway } from "@sector/ad-grants";
 import { registerAuthDecorators } from "./auth/middleware.js";
+import { registerFunnelRoutes } from "./lib/funnel.js";
 
 // Single place the server is assembled, so tests exercise the exact production wiring.
 export async function buildApp(opts: { logger?: boolean; adsGateway?: GoogleAdsGateway; llmProvider?: LlmProvider } = {}): Promise<FastifyInstance> {
@@ -34,6 +35,7 @@ export async function buildApp(opts: { logger?: boolean; adsGateway?: GoogleAdsG
   registerAuthDecorators(app);
   await registerHealthRoutes(app);
   await registerAuditRoutes(app);
+  await registerFunnelRoutes(app);
   await registerAuthRoutes(app);
   await registerOrgAuditRoutes(app);
   await registerRemediationRoutes(app);

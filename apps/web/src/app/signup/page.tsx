@@ -1,32 +1,31 @@
 "use client";
 
-// Slice 2 — see docs/plans/phase-0-1-roadmap.md. Calls apps/api's
+// Slice 2: see docs/plans/phase-0-1-roadmap.md. Calls apps/api's
 // POST /auth/signup with credentials so the session cookie is stored.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Field, Message } from "../../lib/ui";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "0.6rem 0.75rem",
-  fontSize: "1rem",
-  border: "1px solid #ccc",
-  borderRadius: 6,
-  marginBottom: "0.75rem",
-};
+// The API wants a full URL; people type "ngo.org".
+function website(raw: string): string | undefined {
+  const v = raw.trim();
+  if (!v) return undefined;
+  return /^https?:\/\//i.test(v) ? v : `https://${v}`;
+}
 
 export default function SignupPage() {
   const router = useRouter();
-  const [form, setForm] = useState({
-    organizationName: "",
-    name: "",
-    email: "",
-    password: "",
-    fcraSelfDeclared: false,
-    panNumber: "",
-  });
+  const [form, setForm] = useState({ organizationName: "", name: "", email: "", password: "", fcraSelfDeclared: false, panNumber: "", websiteUrl: "" });
+  const [fromAudit, setFromAudit] = useState(false);
+
+  // Arriving from a free audit (/signup?url=...): carry the audited site over.
+  useEffect(() => {
+    const url = new URLSearchParams(window.location.search).get("url");
+    if (url) { setForm((f) => ({ ...f, websiteUrl: url })); setFromAudit(true); }
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -50,6 +49,8 @@ export default function SignupPage() {
           password: form.password,
           fcraSelfDeclared: form.fcraSelfDeclared,
           panNumber: form.panNumber || undefined,
+          websiteUrl: website(form.websiteUrl),
+          fromAudit: fromAudit || undefined,
         }),
       });
       if (!res.ok) {
@@ -57,7 +58,8 @@ export default function SignupPage() {
         setError(body?.message ?? "Could not create your account.");
         return;
       }
-      router.push("/dashboard");
+      // With a website on file, land on Audits and run the first audit straight away.
+      router.push(website(form.websiteUrl) ? "/audits?first=1" : "/dashboard");
     } catch {
       setError("Could not reach the server. Check your connection and try again.");
     } finally {
@@ -66,85 +68,50 @@ export default function SignupPage() {
   }
 
   return (
-    <main style={{ fontFamily: "system-ui", padding: "3rem 1.5rem", maxWidth: 480, margin: "0 auto" }}>
-      <h1>Create your organization account</h1>
-      <p style={{ color: "#666" }}>
-        FCRA/PAN/12A/80G below are self-declared — not independently verified
-        at this stage.
-      </p>
+    <main className="page page-narrow">
+      <a className="wordmark" href="/">SEctOr</a>
+      <div className="page-head" style={{ marginTop: "var(--s-7)" }}>
+        <h1 className="headline">Create your organization account</h1>
+        <p className="muted prose">Takes about a minute. You can run audits as soon as you are in.</p>
+      </div>
       <form onSubmit={handleSubmit}>
-        <input
-          style={inputStyle}
-          placeholder="Organization name"
-          value={form.organizationName}
-          onChange={(e) => set("organizationName", e.target.value)}
-          required
-        />
-        <input
-          style={inputStyle}
-          placeholder="Your name"
-          value={form.name}
-          onChange={(e) => set("name", e.target.value)}
-          required
-        />
-        <input
-          style={inputStyle}
-          type="email"
-          placeholder="Email"
-          value={form.email}
-          onChange={(e) => set("email", e.target.value)}
-          required
-        />
-        <input
-          style={inputStyle}
-          type="password"
-          placeholder="Password (min. 10 characters)"
-          value={form.password}
-          onChange={(e) => set("password", e.target.value)}
-          minLength={10}
-          required
-        />
-        <label style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem", alignItems: "center" }}>
-          <input
-            type="checkbox"
-            checked={form.fcraSelfDeclared}
-            onChange={(e) => set("fcraSelfDeclared", e.target.checked)}
-          />
-          We are FCRA registered (self-declared)
-        </label>
-        <input
-          style={inputStyle}
-          placeholder="PAN number (optional)"
-          value={form.panNumber}
-          onChange={(e) => set("panNumber", e.target.value)}
-        />
+        <Field label="Organization name">
+          <input className="input" value={form.organizationName} onChange={(e) => set("organizationName", e.target.value)} autoComplete="organization" required />
+        </Field>
+        <Field label="Your name">
+          <input className="input" value={form.name} onChange={(e) => set("name", e.target.value)} autoComplete="name" required />
+        </Field>
+        <Field label="Work email">
+          <input className="input" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} autoComplete="email" required />
+        </Field>
+        <Field label="Organization website" hint="Optional. We audit this address first, and fixes are applied to it.">
+          <input className="input" inputMode="url" value={form.websiteUrl} onChange={(e) => set("websiteUrl", e.target.value)} autoComplete="url" placeholder="yourorganization.org" />
+        </Field>
+        <Field label="Password" hint="At least 10 characters.">
+          <input className="input" type="password" value={form.password} onChange={(e) => set("password", e.target.value)} autoComplete="new-password" minLength={10} required />
+        </Field>
 
-        {error && (
-          <p role="alert" style={{ color: "#b00020" }}>
-            {error}
+        <div className="section" style={{ marginTop: "var(--s-6)" }}>
+          <h2 className="section-heading">Registration details</h2>
+          <p className="small prose" style={{ margin: "var(--s-2) 0 var(--s-4)" }}>
+            These are self-declared. SEctOr does not verify them at signup. They decide which tools are
+            offered, for example Google Ad Grants needs FCRA registration.
           </p>
-        )}
+          <label className="check">
+            <input type="checkbox" checked={form.fcraSelfDeclared} onChange={(e) => set("fcraSelfDeclared", e.target.checked)} />
+            <span>We are FCRA registered</span>
+          </label>
+          <Field label="PAN number" hint="Optional.">
+            <input className="input" value={form.panNumber} onChange={(e) => set("panNumber", e.target.value)} autoComplete="off" />
+          </Field>
+        </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: "100%",
-            padding: "0.75rem",
-            fontSize: "1rem",
-            borderRadius: 6,
-            border: "none",
-            background: "#111",
-            color: "#fff",
-            cursor: loading ? "default" : "pointer",
-          }}
-        >
-          {loading ? "Creating account…" : "Create account"}
-        </button>
+        <div className="actions">
+          {error && <div style={{ width: "100%" }}><Message text={error} /></div>}
+          <button type="submit" className="btn btn-block" disabled={loading}>{loading ? "Creating account…" : "Create account"}</button>
+        </div>
       </form>
-      <p style={{ marginTop: "1rem" }}>
-        Already have an account? <a href="/login">Log in</a>
-      </p>
+      <p className="small" style={{ marginTop: "var(--s-5)" }}>Already have an account? <a href="/login">Log in</a></p>
     </main>
   );
 }

@@ -108,6 +108,40 @@ export const securityEventLog = pgTable(
   ],
 );
 
+// Phase 0-1 Goal #1 (docs/product/product.md): measure whether the free audit
+// converts to next-step actions. Anonymous funnel facts only: no IP, no email,
+// no user agent. `url` is the audited site, `organizationId` is set only once
+// a signed-up org exists.
+export const funnelEvents = pgTable(
+  "funnel_events",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    event: text("event").notNull(),
+    url: text("url"),
+    organizationId: text("organization_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("funnel_events_event_created_idx").on(table.event, table.createdAt)],
+);
+
+// Password reset (pilot: the link is delivered by ops, see scripts/reset-link.ts).
+// Same principle as sessions: only the SHA-256 of the token is stored, so a DB
+// read alone can never produce a working reset link. Single use, short expiry.
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    tokenHash: text("token_hash").notNull().unique(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("password_reset_tokens_user_idx").on(table.userId)],
+);
+
 export const organizationsRelations = relations(organizations, ({ one, many }) => ({
   profile: one(organizationProfiles, {
     fields: [organizations.id],
