@@ -263,6 +263,7 @@ select.input { appearance: auto; }
 /* Status words stay ink: ochre (4.3:1) and dark-mode pine (4.3:1) are below AA for
    13px text. The drawn mark carries the colour (non-text, needs 3:1). */
 .finding-status { color: var(--ink); }
+.finding-tech { font-size: 13px; line-height: 1.5; color: var(--ink-muted); overflow-wrap: anywhere; }
 .finding-fix { margin-top: var(--s-3) !important; }
 .finding-steps { padding-left: var(--s-5); }
 .finding-steps > li + li { margin-top: var(--s-1); }

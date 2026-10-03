@@ -2,19 +2,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api, ApiError } from "./api";
+import { checkCopy } from "./checks";
 
 // Visual vocabulary lives in app/globals.css (docs/design/design-system.pdf).
 
-export const CHECK_LABELS: Record<string, string> = {
-  schema: "Structured data",
-  robots_txt_ai_block: "AI crawlers allowed",
-  llms_txt: "llms.txt present",
-  heading_hierarchy: "Heading hierarchy",
-  faq_pairs: "Question-and-answer content",
-  front_loaded_stat: "A clear figure near the top",
-  freshness: "Signs the page is kept up to date",
-};
-export const checkLabel = (id: string) => CHECK_LABELS[id] ?? id;
 
 export interface Me { userId: string; email: string; name: string; role: "owner" | "staff" | "viewer"; organizationId: string; organizationName: string }
 
@@ -135,20 +126,25 @@ export function RenderCaveat() {
   );
 }
 
-export interface FindingLike { checkId: string; passed: boolean; detail: string }
+export interface FindingLike { checkId: string; passed: boolean; detail: string; weight?: number }
+
+const copy = (f: FindingLike) => checkCopy(f.checkId);
 
 /** Plain list, 24px rhythm. Each failing item carries its own fix action. */
 export function FindingList<T extends FindingLike>({ items, fix }: { items: T[]; fix?: (f: T) => ReactNode }) {
-  const sorted = [...items].sort((a, b) => Number(a.passed) - Number(b.passed));
+  // Needs-attention first, biggest score impact first (weights: skills/audit-engine.md).
+  const sorted = [...items].sort((a, b) => Number(a.passed) - Number(b.passed) || (b.weight ?? 0) - (a.weight ?? 0));
   return (
     <ul className="findings">
       {sorted.map((f) => (
         <li key={f.checkId}>
           <Mark passed={f.passed} />
           <div className="finding-body">
-            <p className="finding-title">{checkLabel(f.checkId)}</p>
+            <p className="finding-title">{copy(f).title}</p>
             <p className="finding-status" data-tone={f.passed ? "pass" : "attention"}>{f.passed ? "Passed" : "Needs attention"}</p>
-            <p className="muted">{f.detail}</p>
+            <p className="prose">{f.passed ? copy(f).passed : copy(f).failed}</p>
+            {!f.passed && copy(f).why && <p className="muted prose">{copy(f).why}</p>}
+            <p className="finding-tech">Technical detail: {f.detail}</p>
             {!f.passed && fix && <div className="finding-fix">{fix(f)}</div>}
           </div>
         </li>
