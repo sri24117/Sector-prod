@@ -13,12 +13,15 @@ what the dev team should build first. Read it before touching code.
 ## Quick start (local dev)
 
 ```bash
-cp .env.example .env        # fill in DATABASE_URL, POSTGRES_PASSWORD at minimum
+cp .env.example .env        # fill in DATABASE_URL, POSTGRES_PASSWORD, CREDENTIAL_ENCRYPTION_KEY
 pnpm install
-pnpm db:generate
 pnpm db:migrate
 pnpm dev                    # runs api + web + worker in parallel via Turborepo
 ```
+
+The api, worker and db scripts load the root `.env` themselves; values already set in
+the shell take precedence. The web app needs nothing from it for local dev
+(`NEXT_PUBLIC_API_URL` defaults to `http://localhost:4000`).
 
 See docs/runbooks/pilot-onboarding.md for env vars and pilot setup. Postgres and Redis are expected to be running (see `docker-compose.yml`, or
 run them locally). The full stack, including the reverse proxy, runs via:

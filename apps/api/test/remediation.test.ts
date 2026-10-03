@@ -52,6 +52,20 @@ describe("Slice 3 remediation (WordPress)", () => {
     await noPlugin.close();
   });
 
+  it("names the address to use when the site redirects, without sending credentials there", async () => {
+    // e.g. apex -> www. Following it would forward the Basic-auth header to another host.
+    const { createServer } = await import("node:http");
+    let authSeen = false;
+    const redirector = createServer((req, res) => { if (req.headers.authorization) authSeen = true; res.writeHead(301, { location: `${wp.url}${req.url}` }).end(); });
+    await new Promise<void>((r) => redirector.listen(0, "127.0.0.1", r));
+    const port = (redirector.address() as { port: number }).port;
+    const res = await call(A.cookie, "POST", "/connections/wordpress", { siteUrl: `http://127.0.0.1:${port}`, username: "admin", applicationPassword: APP_PASSWORD });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toContain(`redirects to ${wp.url}/`);
+    expect(authSeen).toBe(true); // first request carries auth to the address the user gave — and only there
+    await new Promise<void>((r) => redirector.close(() => r()));
+  });
+
   it("runs and persists an audit with findings; the site starts without schema", async () => {
     const res = await call(A.cookie, "POST", "/audits", { url: wp.url });
     expect(res.statusCode).toBe(201);
