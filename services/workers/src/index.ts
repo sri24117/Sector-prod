@@ -1,3 +1,4 @@
+import "./env.js";
 import { Worker, Queue, type Job } from "bullmq";
 import { Redis } from "ioredis";
 import { runAudit } from "@sector/crawler";
