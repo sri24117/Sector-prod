@@ -1,20 +1,9 @@
-FROM node:20-alpine AS base
+FROM node:20-alpine
 WORKDIR /repo
 RUN corepack enable
-
-FROM base AS deps
-COPY package.json pnpm-workspace.yaml turbo.json tsconfig.base.json ./
-COPY services/workers/package.json services/workers/
-COPY services/crawler/package.json services/crawler/
-COPY packages/shared/package.json packages/shared/
-RUN pnpm install --frozen-lockfile
-
-FROM deps AS build
+# Same as apps/api: workspace packages are TypeScript source, run via tsx.
 COPY . .
-RUN pnpm --filter @sector/workers... build
-
-FROM node:20-alpine AS runtime
-WORKDIR /repo
+RUN pnpm install --frozen-lockfile
 ENV NODE_ENV=production
-COPY --from=build /repo .
-CMD ["node", "services/workers/dist/index.js"]
+WORKDIR /repo/services/workers
+CMD ["node", "--import", "tsx", "src/index.ts"]
