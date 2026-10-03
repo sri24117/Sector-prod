@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "deny": [
+      "Edit(checks/approved/**)",
+      "Write(checks/approved/**)",
+      "Edit(.env)",
+      "Write(.env)",
+      "Read(.env)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "PowerShell(git push:*)"
+    ]
+  }
+}
