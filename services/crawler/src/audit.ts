@@ -199,10 +199,29 @@ function checkFreshness($: cheerio.CheerioAPI, lastModifiedHeader?: string): Che
   };
 }
 
-export async function runAudit(url: string): Promise<AuditResult> {
-  const res = await request(url, {
-    headers: { "user-agent": "SEctOrAuditBot/0.1 (+https://sector.example/bot)" },
-  });
+export interface RunAuditOptions {
+  // Called before every request, including each redirect hop. Callers that
+  // audit user-supplied URLs pass their SSRF guard here, so a public URL
+  // can't 30x the crawler into a private address.
+  allowUrl?: (url: string) => Promise<boolean>;
+}
+
+const MAX_REDIRECTS = 5;
+
+export async function runAudit(startUrl: string, opts: RunAuditOptions = {}): Promise<AuditResult> {
+  let url = startUrl;
+  let res;
+  for (let hop = 0; ; hop++) {
+    if (opts.allowUrl && !(await opts.allowUrl(url))) throw new Error(`URL not allowed: ${url}`);
+    res = await request(url, {
+      headers: { "user-agent": "SEctOrAuditBot/0.1 (+https://sector.example/bot)" },
+    });
+    const location = res.headers.location;
+    if (res.statusCode < 300 || res.statusCode >= 400 || typeof location !== "string") break;
+    await res.body.dump();
+    if (hop >= MAX_REDIRECTS) throw new Error(`Too many redirects from ${startUrl}`);
+    url = new URL(location, url).toString();
+  }
   const html = await res.body.text();
   const $ = cheerio.load(html);
   const lastModified = res.headers["last-modified"] as string | undefined;

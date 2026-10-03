@@ -1,5 +1,6 @@
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
+import { fileURLToPath } from "node:url";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 
 // Each package's test suite gets its OWN database, so suites that TRUNCATE
@@ -16,6 +17,6 @@ export async function ensureTestDb(name: string): Promise<void> {
   if (exists.rowCount === 0) await admin.query(`CREATE DATABASE "${name}"`);
   await admin.end();
   const pool = new pg.Pool({ connectionString: testDbUrl(name) });
-  await migrate(drizzle(pool), { migrationsFolder: new URL("../drizzle", import.meta.url).pathname });
+  await migrate(drizzle(pool), { migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)) });
   await pool.end();
 }

@@ -24,7 +24,7 @@ export async function registerOrgAuditRoutes(app: FastifyInstance): Promise<void
     if (!url || !(await isSafePublicUrl(url))) return reply.status(400).send({ error: "url_not_allowed", message: "That address can't be audited." });
 
     try {
-      const result = await withTimeout(runAudit(url), 15_000);
+      const result = await withTimeout(runAudit(url, { allowUrl: isSafePublicUrl }), 15_000);
       const saved = await db.audits.create({ url: result.url, score: result.score, runAt: new Date(result.runAt), checks: result.checks });
       return reply.status(201).send({ ...saved.audit, findings: saved.findings });
     } catch (err) {
