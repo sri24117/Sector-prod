@@ -9,7 +9,7 @@
       "cache": false,
       "persistent": true,
       "passThroughEnv": [
-        "NODE_ENV", "PORT", "APP_URL", "API_URL", "NEXT_PUBLIC_API_URL",
+        "NODE_ENV", "PORT", "HOST", "APP_URL", "API_URL", "NEXT_PUBLIC_API_URL",
         "DATABASE_URL", "REDIS_URL", "SESSION_SECRET", "JWT_SECRET",
         "CREDENTIAL_ENCRYPTION_KEY", "ALLOW_PRIVATE_TARGETS", "SECTOR_MCC_ID",
         "WORKER_CONCURRENCY", "LLM_PROVIDER", "ANTHROPIC_API_KEY", "LLM_MODEL",
