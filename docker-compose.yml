@@ -74,6 +74,12 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     env_file: .env
     environment:
       # api publishes no port; only Caddy on the compose network can reach it.
@@ -97,6 +103,12 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?set in .env}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     env_file: .env
     depends_on:
       - api
@@ -123,6 +135,30 @@ services:
         limits:
           memory: 1.5G
 
+  # Nightly pg_dump into ./backups on the host (infra/backup.sh). This is the
+  # on-box copy only: ship ./backups off the server too, see
+  # docs/runbooks/uptime-and-backups.md. Same image as postgres, so pg_dump matches.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-sector}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      PGDATABASE: ${POSTGRES_DB:-sector}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./infra/backup.sh:/backup.sh:ro
+      - ./backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
 volumes:
   pgdata:
   redisdata:
@@ -131,5 +167,5 @@ volumes:
 
 # Rough resident budget on the 16 GB box at pilot scale (a few dozen orgs):
 #   postgres 2.0G + redis 0.6G + api 1.5G + web 1.0G + worker 1.5G + proxy 0.25G
-#   = ~6.9G reserved, leaving ~9G headroom for OS, build caches, and burst.
+#   + backup 0.25G = ~7.1G reserved, leaving ~9G headroom for OS, build caches, and burst.
 # Re-budget this file the day a `browser` service is added — see ADR-0003.

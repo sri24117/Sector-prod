@@ -61,15 +61,15 @@ ADR-0006 is still open. For 0→5 NGOs specifically:
       discloses this, but decide if that's acceptable for a paying pilot
       or if the tier needs confirming before launch.
 - [ ] Deploy per `docs/runbooks/deployment-runbook.md` — **note: that
-      runbook's step 3 (`pnpm db:migrate deploy`) is stale**, left over
-      from the pre-Drizzle version. There is no separate `deploy`
-      subcommand now; it's just `pnpm db:migrate`. Fix the runbook before
-      following it.
-- [ ] Minimal uptime check: a cron hitting `/health` and alerting
-      (email/Slack) on failure. Nothing like this exists yet.
-- [ ] A Postgres backup cron (`pg_dump` on a schedule, shipped off-box).
-      Not built — real org data (FCRA numbers, encrypted site credentials)
-      currently has no backup story.
+      runbook step 3 has been fixed** (it is now
+      `docker compose run --rm api npm run migrate`).
+- [ ] Uptime alerting: `/health` now checks Postgres (503 when it is
+      unreachable) and Docker health-checks api/web. **Still to do (you):**
+      create the external monitors in `docs/runbooks/uptime-and-backups.md`.
+- [x] Postgres backups: the `backup` service dumps nightly (03:00 IST, 14
+      days kept) into `./backups`; a restore was verified row for row.
+      **Still to do (you):** choose the off-server copy (same runbook) and
+      store `CREDENTIAL_ENCRYPTION_KEY` off the server.
 
 ## Phase 4 — Close remaining product gaps (BLOCKING for what you sell)
 
@@ -99,7 +99,7 @@ ADR-0006 is still open. For 0→5 NGOs specifically:
 - [ ] A real support channel (email or WhatsApp) — something will break on
       a real NGO's real site; they need a way to reach you.
 - [ ] Decide who manually confirms FCRA
-      (`pnpm --filter @sector/db confirm-fcra <orgId>`) and **what document
+      (`docker compose exec api npm run confirm-fcra -- <orgId>`) and **what document
       they actually check** — the script exists, the human process behind
       it doesn't.
 - [ ] Read `docs/runbooks/incident-crawler-load.md` and the deployment
