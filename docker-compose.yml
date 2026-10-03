@@ -75,6 +75,11 @@ services:
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
     env_file: .env
+    environment:
+      # api publishes no port; only Caddy on the compose network can reach it.
+      TRUST_PROXY: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+      # Explicit: env_file may carry NODE_ENV=development, which would bind loopback only.
+      HOST: 0.0.0.0
     depends_on:
       postgres:
         condition: service_healthy
@@ -89,6 +94,8 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?set in .env}
     restart: unless-stopped
     env_file: .env
     depends_on:
@@ -104,7 +111,6 @@ services:
       dockerfile: services/workers/Dockerfile
     restart: unless-stopped
     env_file: .env
-    command: ["node", "dist/index.js"]
     environment:
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
     depends_on:
