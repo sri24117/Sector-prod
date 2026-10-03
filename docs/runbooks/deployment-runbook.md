@@ -56,3 +56,13 @@ on the shared `coolify` network, Coolify's own database answers to `postgres` an
 its Redis to `redis`. Certificates
 are issued on the first request once DNS points at the server. Tested against
 `traefik:v3.6` with Coolify's entrypoint/provider flags.
+
+### Domains in production
+
+`APP_DOMAIN=jyutrix.io` (the web app, with the free audit as the homepage), and
+`API_DOMAIN=api.jyutrix.io`. `www.jyutrix.io` and the original
+`app.jyutrix.io` permanently redirect to `https://jyutrix.io/<same path>`, so old
+links keep working. `APP_URL` must equal `https://<APP_DOMAIN>` (it is the CORS
+origin and the base of password-reset links). Point DNS at the server **before**
+changing `APP_DOMAIN`: Traefik requests certificates on start-up, and failed
+Let's Encrypt validations count toward its rate limits.
