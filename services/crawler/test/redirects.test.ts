@@ -2,6 +2,11 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { runAudit } from "../src/audit.js";
+import { createGuardedAgent } from "@sector/shared/net-guard";
+
+// These tests talk to a localhost server, so they opt in to private targets
+// explicitly (the production default refuses them; see guard tests below).
+const local = { dispatcher: createGuardedAgent({ allowPrivate: true }), allowUrl: async () => true };
 
 // Many NGO sites redirect apex -> www or http -> https. Before this test the
 // crawler scored the 3xx stub body instead of the real page.
@@ -27,7 +32,7 @@ afterAll(() => new Promise<void>((r) => server.close(() => r())));
 
 describe("runAudit redirects", () => {
   it("audits the page a redirect points to, and reports the final URL", async () => {
-    const result = await runAudit(`${base}/`);
+    const result = await runAudit(`${base}/`, local);
     expect(result.url).toBe(`${base}/home`);
     const headings = result.checks.find((c) => c.checkId === "heading_hierarchy")!;
     expect(headings.passed).toBe(true);
@@ -40,11 +45,11 @@ describe("runAudit redirects", () => {
       seen.push(u);
       return !u.includes("169.254.169.254");
     };
-    await expect(runAudit(`${base}/to-internal`, { allowUrl })).rejects.toThrow(/not allowed/i);
+    await expect(runAudit(`${base}/to-internal`, { ...local, allowUrl })).rejects.toThrow(/not allowed/i);
     expect(seen).toContain("http://169.254.169.254/latest/meta-data");
   });
 
   it("gives up on a redirect loop instead of hanging", async () => {
-    await expect(runAudit(`${base}/loop`)).rejects.toThrow(/too many redirects/i);
+    await expect(runAudit(`${base}/loop`, local)).rejects.toThrow(/too many redirects/i);
   });
 });

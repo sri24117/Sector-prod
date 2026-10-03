@@ -8,10 +8,19 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "echo \"no tests yet\" && exit 0",
+    "test": "vitest run",
     "clean": "rm -rf dist .turbo"
   },
   "devDependencies": {
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "@types/node": "^20.14.0"
+  },
+  "dependencies": {
+    "undici": "^6.19.0"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./net-guard": "./src/net-guard.ts"
   }
 }

@@ -1,31 +1,30 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
+import { checkPublicUrl, isPrivateAddress } from "@sector/shared/net-guard";
 
-// Server-side fetches of user-supplied URLs (audit, WordPress connect) are an
-// SSRF vector: without this, anyone could point us at 169.254.169.254 or an
-// internal service. Blocks loopback/private/link-local unless
-// ALLOW_PRIVATE_TARGETS=1 (local dev + tests against a mock site only).
-// Known limit: DNS-rebinding between this check and the fetch is not defended.
+// Early, user-facing check for URLs we are about to fetch (audit, WordPress
+// connect). It gives a clear answer before any crawl starts; the real SSRF
+// boundary is the guarded agent in @sector/shared/net-guard, which re-checks
+// the IP actually dialled on every connection (so DNS rebinding between this
+// check and the fetch is covered there). Fails closed: unresolvable = not ok.
+// ALLOW_PRIVATE_TARGETS=1 is for local dev and tests against a mock site only.
 
-function isPrivateIp(ip: string): boolean {
-  if (ip.includes(":")) {
-    const l = ip.toLowerCase();
-    return l === "::1" || l.startsWith("fc") || l.startsWith("fd") || l.startsWith("fe80") || l.startsWith("::ffff:127.") || l.startsWith("::ffff:10.") || l.startsWith("::ffff:192.168.");
+export type UrlAssessment = "ok" | "blocked" | "unresolvable";
+
+export async function assessUrl(raw: string): Promise<UrlAssessment> {
+  if (!checkPublicUrl(raw)) return "blocked";
+  if (process.env.ALLOW_PRIVATE_TARGETS === "1") return "ok";
+  const host = new URL(raw).hostname.replace(/^\[|\]$/g, "");
+  if (isIP(host)) return "ok"; // literal already checked by checkPublicUrl
+  try {
+    const addrs = await lookup(host, { all: true, verbatim: true });
+    if (!addrs.length) return "unresolvable";
+    return addrs.some((a) => isPrivateAddress(a.address)) ? "blocked" : "ok";
+  } catch {
+    return "unresolvable";
   }
-  const [a, b] = ip.split(".").map(Number) as [number, number];
-  return a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127);
 }
 
 export async function isSafePublicUrl(raw: string): Promise<boolean> {
-  if (process.env.ALLOW_PRIVATE_TARGETS === "1") return true;
-  let host: string;
-  try { host = new URL(raw).hostname.replace(/^\[|\]$/g, ""); } catch { return false; }
-  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".internal")) return false;
-  if (isIP(host)) return !isPrivateIp(host);
-  try {
-    const addrs = await lookup(host, { all: true });
-    return addrs.every((a) => !isPrivateIp(a.address));
-  } catch {
-    return true; // unresolvable: the crawl itself will fail; nothing internal was reached
-  }
+  return (await assessUrl(raw)) === "ok";
 }

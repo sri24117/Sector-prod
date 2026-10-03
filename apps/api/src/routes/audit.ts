@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { runAudit } from "@sector/crawler";
-import { isSafePublicUrl } from "../lib/ssrf.js";
+import { assessUrl, isSafePublicUrl } from "../lib/ssrf.js";
+import { withAuditSlot, BUSY } from "../lib/audit-slots.js";
 import { recordFunnelEvent } from "../lib/funnel.js";
 
 // Slice 1 v1 — see docs/plans/feature-spec-slice1-audit-funnel-v1.md.
@@ -31,17 +32,10 @@ export function normalizeUrl(raw: string): string | null {
   return null;
 }
 
-export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms);
-    }),
-  ]);
-}
-
 export async function registerAuditRoutes(app: FastifyInstance): Promise<void> {
-  app.post("/audit", async (request, reply) => {
+  // Public and unauthenticated, so it is rate-limited per client and capped by
+  // the shared audit slots; the crawl itself is aborted at CRAWL_TIMEOUT_MS.
+  app.post("/audit", { config: { rateLimit: { max: 10, timeWindow: "10 minutes" } } }, async (request, reply) => {
     const parsed = AuditRequestSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({
@@ -58,14 +52,19 @@ export async function registerAuditRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    if (!(await isSafePublicUrl(normalized))) {
+    const verdict = await assessUrl(normalized);
+    if (verdict === "unresolvable") {
+      return reply.status(400).send({ error: "site_not_found", message: "Could not find a website at that address. Check the spelling and try again." });
+    }
+    if (verdict !== "ok") {
       return reply.status(400).send({ error: "url_not_allowed", message: "That address can't be audited." });
     }
 
     try {
-      const result = await withTimeout(runAudit(normalized, { allowUrl: isSafePublicUrl }), CRAWL_TIMEOUT_MS);
-      await recordFunnelEvent({ event: "audit_run", url: result.url });
-      return reply.status(200).send(result);
+      const slot = await withAuditSlot(() => runAudit(normalized, { allowUrl: isSafePublicUrl, signal: AbortSignal.timeout(CRAWL_TIMEOUT_MS) }));
+      if (!slot) return reply.status(503).send(BUSY);
+      await recordFunnelEvent({ event: "audit_run", url: slot.value.url });
+      return reply.status(200).send(slot.value);
     } catch (err) {
       request.log.warn({ err, url: normalized }, "audit crawl failed");
       return reply.status(502).send({

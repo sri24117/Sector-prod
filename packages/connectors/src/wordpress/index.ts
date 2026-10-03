@@ -14,6 +14,9 @@ export interface WordPressCredentials {
   applicationPassword: string;
 }
 
+import { fetch } from "undici";
+import { guardedAgent } from "@sector/shared/net-guard";
+
 const TIMEOUT_MS = 10_000;
 
 function authHeader(c: WordPressCredentials): string {
@@ -33,8 +36,9 @@ export class WordPressError extends Error {
 
 // Redirects are never followed: that would forward the Basic-auth header to another host.
 // Instead tell the user which address to connect with (typically apex -> www, http -> https).
-async function wpFetch(url: string, init: RequestInit): Promise<Response> {
-  const res = await fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS), redirect: "manual" });
+async function wpFetch(url: string, init: { method?: string; headers?: Record<string, string>; body?: string }) {
+  // Guarded agent: the site address is user-supplied, so every connection is SSRF-checked on the IP dialled.
+  const res = await fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS), redirect: "manual", dispatcher: guardedAgent() });
   const location = res.headers.get("location");
   if (res.status >= 300 && res.status < 400 && location) {
     const target = new URL(location, url);
