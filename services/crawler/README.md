@@ -17,8 +17,8 @@ robots.txt AI-crawler blocking (15pts), llms.txt (5pts), heading hierarchy
 ## Usage
 
 ```bash
-pnpm --filter @sector/crawler dev -- https://example-ngo.org
-pnpm --filter @sector/crawler dev -- --batch urls.csv --out results.json
+pnpm --filter @sector/crawler audit -- https://example-ngo.org
+pnpm --filter @sector/crawler audit -- --batch urls.csv --out results.json
 ```
 
 ## What's NOT in this reconstruction yet
