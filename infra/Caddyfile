@@ -1,0 +1,11 @@
+# Reverse proxy for the single-VPS deployment. Replace the placeholder
+# domains before first deploy. Caddy handles TLS automatically via
+# Let's Encrypt as long as DNS for both domains points at this VPS.
+
+app.example-sector.org {
+	reverse_proxy web:3000
+}
+
+api.example-sector.org {
+	reverse_proxy api:4000
+}

@@ -1,0 +1,20 @@
+node_modules/
+dist/
+.next/
+.turbo/
+*.log
+.env
+.env.local
+.DS_Store
+coverage/
+*.tsbuildinfo
+/data/postgres/
+/data/redis/
+
+# Added at repo import
+*.rdb
+.env.*
+!.env.example
+*.pem
+*.key
+.claude/settings.local.json

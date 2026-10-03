@@ -1,0 +1,30 @@
+{
+  "name": "sector",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SEctOr - NGO digital growth and intelligence platform. Monorepo root.",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "db:migrate": "pnpm --filter @sector/db migrate",
+    "db:generate": "pnpm --filter @sector/db generate",
+    "db:studio": "pnpm --filter @sector/db exec drizzle-kit studio"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.0",
+    "typescript": "^5.6.0",
+    "@types/node": "^20.14.0",
+    "eslint": "^9.11.0",
+    "@eslint/js": "^9.11.0",
+    "prettier": "^3.3.0"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "name": "@sector/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/cors": "^10.0.0",
+    "@fastify/rate-limit": "^11.2.0",
+    "@sector/ad-grants": "workspace:^",
+    "@sector/ai": "workspace:^",
+    "@sector/analytics": "workspace:*",
+    "@sector/connectors": "workspace:*",
+    "@sector/content": "workspace:*",
+    "@sector/crawler": "workspace:*",
+    "@sector/db": "workspace:*",
+    "@sector/shared": "workspace:*",
+    "argon2": "^0.45.1",
+    "bullmq": "^5.13.0",
+    "drizzle-orm": "^0.36.0",
+    "fastify": "^5.0.0",
+    "ioredis": "^5.4.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

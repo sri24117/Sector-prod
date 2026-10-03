@@ -1,0 +1,129 @@
+# SEctOr — single-VPS deployment topology
+#
+# Sized against the founder's actual hosting spec (Sept 2026):
+#   4 vCPU / 16 GB RAM / 200 GB NVMe / 16 TB bandwidth, Docker-based KVM VPS
+#
+# This is a MODULAR MONOLITH, not microservices — one Postgres, one Redis,
+# one API process, one web process, one worker process, one reverse proxy.
+# This matches the AI Architecture Protocol's own stated preference
+# ("modular monolith over premature microservices") and is a hard fit for a
+# single 16 GB box, not a stylistic choice.
+#
+# DELIBERATELY NOT INCLUDED: a self-hosted headless-browser (Playwright)
+# container. See docs/decisions/ADR-0003-hosting-topology.md — the
+# recommendation for Phase 0-1 is Browserless.io as an external managed
+# dependency, precisely so a JS-render spike doesn't starve Postgres/Redis
+# on this box. Do not add a `browser` service here without re-reading that
+# ADR and updating the resource budget below.
+
+services:
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sector}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-sector}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432" # bind to localhost only, never expose publicly
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sector}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 512mb --maxmemory-policy noeviction --appendonly yes
+    volumes:
+      - redisdata:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    deploy:
+      resources:
+        limits:
+          memory: 640M
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - api
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  worker:
+    build:
+      context: .
+      dockerfile: services/workers/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    command: ["node", "dist/index.js"]
+    environment:
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+
+volumes:
+  pgdata:
+  redisdata:
+  caddy_data:
+  caddy_config:
+
+# Rough resident budget on the 16 GB box at pilot scale (a few dozen orgs):
+#   postgres 2.0G + redis 0.6G + api 1.5G + web 1.0G + worker 1.5G + proxy 0.25G
+#   = ~6.9G reserved, leaving ~9G headroom for OS, build caches, and burst.
+# Re-budget this file the day a `browser` service is added — see ADR-0003.
