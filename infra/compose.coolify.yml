@@ -10,6 +10,8 @@
 #   3. web and api join the `coolify` network with Traefik labels for
 #      APP_DOMAIN / API_DOMAIN, HTTPS via Traefik's `letsencrypt` resolver,
 #      and an HTTP -> HTTPS redirect.
+#   6. www.<APP_DOMAIN> and app.<APP_DOMAIN> permanently redirect to
+#      https://<APP_DOMAIN>, keeping the path, so old app.* links keep working.
 #   5. Postgres and Redis get unique aliases (sector-postgres, sector-redis).
 #      The api/web containers also sit on the shared `coolify` network, where
 #      Coolify's own database answers to "postgres" and its Redis to "redis";
@@ -73,6 +75,20 @@ services:
       - traefik.http.routers.sector-web-http.service=sector-web
       - traefik.http.middlewares.sector-web-https.redirectscheme.scheme=https
       - traefik.http.middlewares.sector-web-https.redirectscheme.permanent=true
+      # Aliases: www.<APP_DOMAIN> and app.<APP_DOMAIN> -> https://<APP_DOMAIN>/<path>
+      - traefik.http.routers.sector-web-alias.rule=Host(`www.${APP_DOMAIN}`) || Host(`app.${APP_DOMAIN}`)
+      - traefik.http.routers.sector-web-alias.entrypoints=https
+      - traefik.http.routers.sector-web-alias.tls=true
+      - traefik.http.routers.sector-web-alias.tls.certresolver=letsencrypt
+      - traefik.http.routers.sector-web-alias.middlewares=sector-web-canonical
+      - traefik.http.routers.sector-web-alias.service=sector-web
+      - traefik.http.routers.sector-web-alias-http.rule=Host(`www.${APP_DOMAIN}`) || Host(`app.${APP_DOMAIN}`)
+      - traefik.http.routers.sector-web-alias-http.entrypoints=http
+      - traefik.http.routers.sector-web-alias-http.middlewares=sector-web-canonical
+      - traefik.http.routers.sector-web-alias-http.service=sector-web
+      - traefik.http.middlewares.sector-web-canonical.redirectregex.regex=^https?://[^/]+/?(.*)
+      - traefik.http.middlewares.sector-web-canonical.redirectregex.replacement=https://${APP_DOMAIN}/$${1}
+      - traefik.http.middlewares.sector-web-canonical.redirectregex.permanent=true
 
 networks:
   coolify:
