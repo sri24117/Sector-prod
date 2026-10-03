@@ -1,9 +1,17 @@
-FROM node:20-alpine
+FROM node:20-alpine AS build
 WORKDIR /repo
 RUN corepack enable
-# Same as apps/api: workspace packages are TypeScript source, run via tsx.
+# argon2 has no musl prebuild for this Node/arch, so it compiles from source;
+# the toolchain stays in this stage and never reaches the runtime image.
+RUN apk add --no-cache python3 make g++
+# Workspace packages ship TypeScript source ("main": "src/index.ts"), so the
+# runtime uses tsx rather than a tsc build. Install everything: tsx is a devDependency.
 COPY . .
 RUN pnpm install --frozen-lockfile
+
+FROM node:20-alpine AS runtime
+WORKDIR /repo
 ENV NODE_ENV=production
+COPY --from=build /repo .
 WORKDIR /repo/services/workers
 CMD ["node", "--import", "tsx", "src/index.ts"]

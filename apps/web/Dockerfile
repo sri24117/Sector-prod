@@ -2,7 +2,8 @@ FROM node:20-alpine AS build
 WORKDIR /repo
 RUN corepack enable
 COPY . .
-RUN pnpm install --frozen-lockfile
+# Only web's own dependency graph: skips argon2 and other API-only native modules.
+RUN pnpm install --frozen-lockfile --filter @sector/web...
 # NEXT_PUBLIC_* is inlined at build time, so it must be present here, not only at runtime.
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
