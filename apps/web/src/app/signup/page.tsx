@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Field, Message } from "../../lib/ui";
+import { Field, JourneySteps, Message } from "../../lib/ui";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -70,7 +70,8 @@ export default function SignupPage() {
   return (
     <main className="page page-narrow">
       <a className="wordmark" href="/">SEctOr</a>
-      <div className="page-head" style={{ marginTop: "var(--s-7)" }}>
+      <div style={{ marginTop: "var(--s-6)" }}><JourneySteps current={3} /></div>
+      <div className="page-head">
         <h1 className="headline">Create your organization account</h1>
         <p className="muted prose">Takes about a minute. You can run audits as soon as you are in.</p>
       </div>

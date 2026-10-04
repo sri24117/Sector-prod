@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../lib/api";
-import { AppShell, Field, FindingList, Message, PageHead, RenderCaveat, Score, Section, useGuard, when, type Me } from "../../lib/ui";
+import { AppShell, Field, FindingList, JourneySteps, Message, PageHead, RenderCaveat, Score, Section, ValueSummary, useGuard, when, type Me } from "../../lib/ui";
 
 interface Audit { id: string; url: string; score: number; createdAt: string }
 interface Finding { id: string; checkId: string; passed: boolean; detail: string }
@@ -31,6 +31,10 @@ function Audits({ me }: { me: Me }) {
       if (first && list.length === 0 && canWrite) {
         window.history.replaceState(null, "", "/audits");
         await run();
+      } else if (list[0]) {
+        // Open the latest results straight away: the journey continues from what they last saw.
+        const r = await api<{ findings: Finding[] }>(`/audits/${list[0].id}`);
+        setOpen({ audit: list[0], findings: r.findings, fresh: false });
       }
     });
     api<Connection>("/connections/wordpress").then(setConn).catch(() => setConn(null));
@@ -66,6 +70,15 @@ function Audits({ me }: { me: Me }) {
     } finally { setBusy(null); }
   });
 
+  // The one next action for the value card (spec section 3): connect, then apply the auto-fixable win.
+  function nextAction(findings: Finding[]) {
+    if (!canWrite) return null;
+    const schema = findings.find((f) => f.checkId === "schema" && !f.passed && !outcome[f.id]);
+    if (schema && !conn) return <a className="btn" href="#wordpress">Connect WordPress</a>;
+    if (schema && conn) return <button type="button" className="btn" disabled={busy === schema.id} onClick={() => fix(schema)}>{busy === schema.id ? "Applying fix…" : "Apply the first fix"}</button>;
+    return null;
+  }
+
   function fixFor(f: Finding) {
     const o = outcome[f.id];
     if (o?.mode === "applied") {
@@ -86,6 +99,7 @@ function Audits({ me }: { me: Me }) {
 
   return (
     <>
+      <JourneySteps current={conn ? 4 : 3} />
       <PageHead title="Audits">Run an audit, see what needs attention, and fix it.</PageHead>
       <Message text={msg} />
       <Message text={ok} tone="ok" />
@@ -105,8 +119,11 @@ function Audits({ me }: { me: Me }) {
           <p className="small">Audited {when(open.audit.createdAt)}</p>
           <div style={{ marginTop: "var(--s-5)" }}><Score value={open.audit.score} animate={open.fresh} /></div>
           <RenderCaveat />
-          <div style={{ marginTop: "var(--s-6)", paddingTop: "var(--s-6)", borderTop: "1px solid var(--line)" }}>
-            <FindingList items={open.findings} fix={fixFor} />
+          <div style={{ marginTop: "var(--s-6)" }}>
+            <ValueSummary score={open.audit.score} items={open.findings}>{nextAction(open.findings)}</ValueSummary>
+          </div>
+          <div style={{ marginTop: "var(--s-6)" }}>
+            <FindingList items={open.findings} fix={fixFor} autoFix={!!conn} />
           </div>
         </Section>
       )}

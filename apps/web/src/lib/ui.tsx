@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api, ApiError } from "./api";
-import { checkCopy } from "./checks";
+import { checkCopy, pointsFor } from "./checks";
 
 // Visual vocabulary lives in app/globals.css (docs/design/design-system.pdf).
 
@@ -130,26 +130,105 @@ export interface FindingLike { checkId: string; passed: boolean; detail: string;
 
 const copy = (f: FindingLike) => checkCopy(f.checkId);
 
-/** Plain list, 24px rhythm. Each failing item carries its own fix action. */
-export function FindingList<T extends FindingLike>({ items, fix }: { items: T[]; fix?: (f: T) => ReactNode }) {
-  // Needs-attention first, biggest score impact first (weights: skills/audit-engine.md).
-  const sorted = [...items].sort((a, b) => Number(a.passed) - Number(b.passed) || (b.weight ?? 0) - (a.weight ?? 0));
+const JOURNEY = ["Check your site", "See what to fix", "Create account and connect", "Fix and re-check"];
+
+/** Four-step progress strip (spec 2026-10-04 section 1). Collapses to "Step n of 4" on phones. */
+export function JourneySteps({ current }: { current: 1 | 2 | 3 | 4 }) {
   return (
-    <ul className="findings">
-      {sorted.map((f) => (
-        <li key={f.checkId}>
-          <Mark passed={f.passed} />
-          <div className="finding-body">
-            <p className="finding-title">{copy(f).title}</p>
-            <p className="finding-status" data-tone={f.passed ? "pass" : "attention"}>{f.passed ? "Passed" : "Needs attention"}</p>
-            <p className="prose">{f.passed ? copy(f).passed : copy(f).failed}</p>
-            {!f.passed && copy(f).why && <p className="muted prose">{copy(f).why}</p>}
-            <p className="finding-tech">Technical detail: {f.detail}</p>
-            {!f.passed && fix && <div className="finding-fix">{fix(f)}</div>}
-          </div>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ol className="journey" aria-label="Your progress">
+        {JOURNEY.map((label, i) => (
+          <li key={label} data-state={i + 1 < current ? "done" : undefined} aria-current={i + 1 === current ? "step" : undefined}>
+            <span><span className="journey-n">{i + 1}.</span> {label}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="journey-compact" style={{ ["--journey-done" as string]: `${(current / 4) * 100}%` }}>
+        Step {current} of 4: <strong>{JOURNEY[current - 1]}</strong>
+      </p>
+    </>
+  );
+}
+
+const sortByImpact = <T extends FindingLike>(items: T[]) => [...items].sort((a, b) => Number(a.passed) - Number(b.passed) || pointsFor(b) - pointsFor(a));
+
+/** Total score if every failing check were fixed. Real weights only, never an estimate. */
+export function potentialScore(score: number, items: FindingLike[]): number {
+  return Math.min(100, score + items.filter((f) => !f.passed).reduce((n, f) => n + pointsFor(f), 0));
+}
+
+/**
+ * Insight cards (spec section 2): needs-attention first, biggest win first. Each failing card shows
+ * plain words, why it matters, impact and effort chips, and its one action. Passed checks are compact.
+ */
+export function FindingList<T extends FindingLike>({ items, fix, autoFix }: { items: T[]; fix?: (f: T) => ReactNode; autoFix?: boolean }) {
+  const sorted = sortByImpact(items);
+  const failing = sorted.filter((f) => !f.passed);
+  const passed = sorted.filter((f) => f.passed);
+  const topWin = failing[0]?.checkId;
+  return (
+    <div>
+      {failing.length > 0 && (
+        <ul className="insights">
+          {failing.map((f) => (
+            <li key={f.checkId} className="card insight">
+              <Mark passed={false} />
+              <div className="insight-body">
+                <div className="insight-head">
+                  <p className="insight-title">{copy(f).title}</p>
+                  <p className="finding-status">Needs attention</p>
+                </div>
+                <p className="prose">{copy(f).failed}</p>
+                {copy(f).why && <p className="muted prose">{copy(f).why}</p>}
+                <p className="chips">
+                  <span className={f.checkId === topWin ? "chip chip-win" : "chip"}>+{pointsFor(f)} points</span>
+                  <span className="chip">{f.checkId === "schema" && autoFix ? "We can do it for you" : copy(f).effort}</span>
+                </p>
+                {fix && <div className="insight-action">{fix(f)}</div>}
+                <p className="finding-tech">Technical detail: {f.detail}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {passed.length > 0 && (
+        <>
+          <p className="small insights-passed-label">{failing.length ? "Already working" : "Everything is working"}</p>
+          <ul className="insights">
+            {passed.map((f) => (
+              <li key={f.checkId} className="card card-quiet insight insight-compact">
+                <Mark passed />
+                <div className="insight-body">
+                  <div className="insight-head">
+                    <p className="finding-title">{copy(f).title}</p>
+                    <p className="finding-status">Passed</p>
+                  </div>
+                  <p className="small">{copy(f).passed}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Value summary card (spec section 3): what today is worth and what fixing would be worth. */
+export function ValueSummary({ score, items, children }: { score: number; items: FindingLike[]; children?: ReactNode }) {
+  const failing = items.filter((f) => !f.passed);
+  const target = potentialScore(score, items);
+  const autoFixable = failing.some((f) => f.checkId === "schema");
+  return (
+    <div className="card value-card">
+      <p className="value-line">
+        {failing.length === 0
+          ? `${score} out of 100. Every check passes.`
+          : `${score} out of 100 today. Fixing ${failing.length === 1 ? "this one" : `these ${failing.length}`} could take you to ${target}.`}
+      </p>
+      {autoFixable && <p className="muted prose" style={{ marginTop: "var(--s-2)" }}>One of them we can fix for you automatically on WordPress.</p>}
+      {children && <div className="actions">{children}</div>}
+    </div>
   );
 }
 
