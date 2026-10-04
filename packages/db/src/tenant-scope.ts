@@ -180,7 +180,7 @@ export function scopedDb(organizationId: string) {
         rawDb.insert(schema.reports).values({ ...data, organizationId }).returning({ id: schema.reports.id, status: schema.reports.status, siteUrl: schema.reports.siteUrl, createdAt: schema.reports.createdAt }).then((r) => r[0]!),
       // Listing never loads the heavy html/pdf columns.
       list: () => rawDb.select({ id: schema.reports.id, siteUrl: schema.reports.siteUrl, status: schema.reports.status, error: schema.reports.error, summary: schema.reports.summary, createdAt: schema.reports.createdAt, finishedAt: schema.reports.finishedAt })
-        .from(schema.reports).where(eq(schema.reports.organizationId, organizationId)).orderBy(desc(schema.reports.createdAt)),
+        .from(schema.reports).where(eq(schema.reports.organizationId, organizationId)).orderBy(desc(schema.reports.createdAt)).limit(50),
       findById: (reportId: string) => rawDb.select({ id: schema.reports.id, siteUrl: schema.reports.siteUrl, status: schema.reports.status, error: schema.reports.error, summary: schema.reports.summary, createdAt: schema.reports.createdAt, finishedAt: schema.reports.finishedAt })
         .from(schema.reports).where(and(eq(schema.reports.id, reportId), eq(schema.reports.organizationId, organizationId))).then((r) => r[0] ?? null),
       html: (reportId: string) => rawDb.select({ html: schema.reports.html }).from(schema.reports)

@@ -104,6 +104,7 @@ describe("full report", () => {
     const html = await call(A.cookie, "GET", `/reports/${r!.id}/html`);
     expect(html.statusCode).toBe(200);
     expect(html.headers["content-security-policy"]).toContain("default-src 'none'");
+    expect(html.headers["content-security-policy"]).toContain("sandbox");
     expect(html.body).toContain("<h1>Report</h1>");
     const pdf = await call(A.cookie, "GET", `/reports/${r!.id}/pdf`);
     expect(pdf.statusCode).toBe(200);

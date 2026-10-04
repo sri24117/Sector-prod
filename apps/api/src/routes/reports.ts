@@ -14,7 +14,7 @@ export interface ReportQueue { add(job: { reportId: string; organizationId: stri
 const PAID_PLANS = new Set(["pilot", "paid"]);
 const DAILY_LIMIT = 10;
 // Reports are self-contained HTML built by the worker: no scripts, only inline styles and data: images.
-const REPORT_CSP = "default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'";
+const REPORT_CSP = "default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; sandbox";
 
 export async function registerReportRoutes(app: FastifyInstance, queue: ReportQueue): Promise<void> {
   const write = [authenticate, requireRole(["owner", "staff"])];
