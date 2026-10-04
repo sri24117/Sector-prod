@@ -1,4 +1,5 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
 import { rawDb, schema } from "./client.js";
 
 // The mechanism docs/security/security.md calls "HUMAN DECISION REQUIRED
@@ -157,6 +158,43 @@ export function scopedDb(organizationId: string) {
       list: () => rawDb.select().from(schema.contentAssets).where(eq(schema.contentAssets.organizationId, organizationId)).orderBy(desc(schema.contentAssets.createdAt)),
       setStatus: (assetId: string, status: string) =>
         rawDb.update(schema.contentAssets).set({ status }).where(and(eq(schema.contentAssets.id, assetId), eq(schema.contentAssets.organizationId, organizationId))).returning().then((r) => r[0] ?? null),
+    },
+
+    // ---- Full report (spec 2026-10-04-full-report-design.md) ----
+    siteVerification: {
+      get: () => rawDb.select().from(schema.siteVerifications).where(eq(schema.siteVerifications.organizationId, organizationId)).then((r) => r[0] ?? null),
+      // One row per org. A different host (website changed) issues a fresh token and clears verification.
+      ensure: async (host: string) => {
+        const [row] = await rawDb.select().from(schema.siteVerifications).where(eq(schema.siteVerifications.organizationId, organizationId));
+        if (row && row.host === host) return row;
+        const token = randomBytes(18).toString("base64url");
+        return rawDb.insert(schema.siteVerifications).values({ organizationId, host, token })
+          .onConflictDoUpdate({ target: schema.siteVerifications.organizationId, set: { host, token, method: null, verifiedAt: null } })
+          .returning().then((r) => r[0]!);
+      },
+      markVerified: (method: "wordpress" | "meta" | "dns") =>
+        rawDb.update(schema.siteVerifications).set({ method, verifiedAt: new Date() }).where(eq(schema.siteVerifications.organizationId, organizationId)).returning().then((r) => r[0] ?? null),
+    },
+    reports: {
+      create: (data: { siteUrl: string; createdBy: string }) =>
+        rawDb.insert(schema.reports).values({ ...data, organizationId }).returning({ id: schema.reports.id, status: schema.reports.status, siteUrl: schema.reports.siteUrl, createdAt: schema.reports.createdAt }).then((r) => r[0]!),
+      // Listing never loads the heavy html/pdf columns.
+      list: () => rawDb.select({ id: schema.reports.id, siteUrl: schema.reports.siteUrl, status: schema.reports.status, error: schema.reports.error, summary: schema.reports.summary, createdAt: schema.reports.createdAt, finishedAt: schema.reports.finishedAt })
+        .from(schema.reports).where(eq(schema.reports.organizationId, organizationId)).orderBy(desc(schema.reports.createdAt)).limit(50),
+      findById: (reportId: string) => rawDb.select({ id: schema.reports.id, siteUrl: schema.reports.siteUrl, status: schema.reports.status, error: schema.reports.error, summary: schema.reports.summary, createdAt: schema.reports.createdAt, finishedAt: schema.reports.finishedAt })
+        .from(schema.reports).where(and(eq(schema.reports.id, reportId), eq(schema.reports.organizationId, organizationId))).then((r) => r[0] ?? null),
+      html: (reportId: string) => rawDb.select({ html: schema.reports.html }).from(schema.reports)
+        .where(and(eq(schema.reports.id, reportId), eq(schema.reports.organizationId, organizationId), eq(schema.reports.status, "done"))).then((r) => r[0]?.html ?? null),
+      pdf: (reportId: string) => rawDb.select({ pdf: schema.reports.pdf, siteUrl: schema.reports.siteUrl, createdAt: schema.reports.createdAt }).from(schema.reports)
+        .where(and(eq(schema.reports.id, reportId), eq(schema.reports.organizationId, organizationId), eq(schema.reports.status, "done"))).then((r) => r[0] ?? null),
+      // A report older than 15 minutes that never finished (worker restarted mid-job) no longer blocks new ones.
+      activeCount: () => rawDb.select({ id: schema.reports.id }).from(schema.reports)
+        .where(and(eq(schema.reports.organizationId, organizationId), inArray(schema.reports.status, ["queued", "running"]), gt(schema.reports.createdAt, new Date(Date.now() - 15 * 60_000)))).then((r) => r.length),
+      countSince: (since: Date) => rawDb.select({ id: schema.reports.id }).from(schema.reports)
+        .where(and(eq(schema.reports.organizationId, organizationId), gt(schema.reports.createdAt, since))).then((r) => r.length),
+      // Used by the worker, which receives the organizationId with the job.
+      update: (reportId: string, set: Partial<Pick<typeof schema.reports.$inferInsert, "status" | "error" | "summary" | "html" | "pdf" | "finishedAt">>) =>
+        rawDb.update(schema.reports).set(set).where(and(eq(schema.reports.id, reportId), eq(schema.reports.organizationId, organizationId))).returning({ id: schema.reports.id }).then((r) => r[0] ?? null),
     },
   };
 }

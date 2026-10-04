@@ -9,19 +9,27 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "echo \"no tests yet\" && exit 0",
+    "test": "vitest run",
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
     "@sector/ad-grants": "workspace:^",
     "@sector/crawler": "workspace:*",
+    "@sector/db": "workspace:^",
     "@sector/shared": "workspace:*",
+    "axe-core": "^4",
     "bullmq": "^5.13.0",
+    "cheerio": "^1",
+    "chrome-launcher": "^1",
     "ioredis": "^5.4.0",
-    "tsx": "^4.19.0"
+    "lighthouse": "^12",
+    "playwright": "^1.48",
+    "tsx": "^4.19.0",
+    "undici": "^6.19"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^2.1"
   }
 }

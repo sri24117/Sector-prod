@@ -133,7 +133,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1.5G
+          memory: 2G   # Chromium + Lighthouse for full reports (ADR-0007)
 
   # Nightly pg_dump into ./backups on the host (infra/backup.sh). This is the
   # on-box copy only: ship ./backups off the server too, see

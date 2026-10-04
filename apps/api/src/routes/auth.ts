@@ -25,6 +25,8 @@ const SignupSchema = z.object({
   section12ANumber: z.string().max(50).optional(),
   section80GNumber: z.string().max(50).optional(),
   websiteUrl: z.string().url().optional(),
+  // Self-declared; ops read it before granting a paid plan (full report spec, access rules).
+  orgType: z.enum(["ngo", "csr", "foundation", "social_enterprise"]).optional(),
   // Set by the web app when the visitor arrived from a free audit (funnel measurement only).
   fromAudit: z.boolean().optional(),
 });
@@ -90,6 +92,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
             section12ANumber: input.section12ANumber,
             section80GNumber: input.section80GNumber,
             websiteUrl: input.websiteUrl,
+            orgType: input.orgType,
           });
 
           return { user: user!, org: org! };
@@ -207,6 +210,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     const auth = request.auth!;
     const [user] = await rawDb.select().from(schema.users).where(eq(schema.users.id, auth.userId)).limit(1);
     const org = await scopedDb(auth.organizationId).organization.get();
+    const profile = await scopedDb(auth.organizationId).organizationProfile.get();
 
     if (!user || !org) {
       return reply.status(401).send({ error: "unauthenticated", message: "Account not found." });
@@ -219,6 +223,8 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       role: auth.role,
       organizationId: org.id,
       organizationName: org.name,
+      plan: org.plan,
+      websiteUrl: profile?.websiteUrl ?? null,
     });
   });
 }

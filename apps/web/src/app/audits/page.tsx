@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import { AppShell, Field, FindingList, JourneySteps, Message, PageHead, RenderCaveat, Score, Section, ValueSummary, useGuard, when, type Me } from "../../lib/ui";
+import { FullReport } from "./FullReport";
 
 interface Audit { id: string; url: string; score: number; createdAt: string }
 interface Finding { id: string; checkId: string; passed: boolean; detail: string }
@@ -16,7 +17,9 @@ function Audits({ me }: { me: Me }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
-  const [url, setUrl] = useState("");
+  const [website, setWebsite] = useState<string | null>(me.websiteUrl);
+  const [editSite, setEditSite] = useState(!me.websiteUrl);
+  const [siteInput, setSiteInput] = useState(me.websiteUrl ?? "");
   const [conn, setConn] = useState<Connection | null>(null);
   const [wp, setWp] = useState({ siteUrl: "", username: "", applicationPassword: "" });
   const guard = useGuard((m) => { setMsg(m); if (m) setOk(null); });
@@ -48,9 +51,17 @@ function Audits({ me }: { me: Me }) {
   const run = () => guard(async () => {
     setBusy("run");
     try {
-      const r = await api<Audit & { findings: Finding[] }>("/audits", { method: "POST", body: url ? { url } : {} });
+      const r = await api<Audit & { findings: Finding[] }>("/audits", { method: "POST", body: {} });
       setOpen({ audit: r, findings: r.findings, fresh: true });
       await load();
+    } finally { setBusy(null); }
+  });
+  const saveSite = () => guard(async () => {
+    setBusy("site");
+    try {
+      const r = await api<{ websiteUrl: string }>("/organization/profile", { method: "PATCH", body: { websiteUrl: siteInput } });
+      setWebsite(r.websiteUrl); setSiteInput(r.websiteUrl); setEditSite(false);
+      setOk("Website saved. Audits and full reports now check this address.");
     } finally { setBusy(null); }
   });
   const connect = () => guard(async () => {
@@ -106,10 +117,19 @@ function Audits({ me }: { me: Me }) {
 
       {canWrite && (
         <Section title="Run an audit" id="run">
-          <form className="inline-form" onSubmit={(e) => { e.preventDefault(); void run(); }}>
-            <input className="input" inputMode="url" aria-label="Website address" placeholder="Your website, or leave blank" value={url} onChange={(e) => setUrl(e.target.value)} />
-            <button type="submit" className="btn" disabled={busy === "run"}>{busy === "run" ? "Running audit…" : "Run audit"}</button>
-          </form>
+          {editSite ? (
+            <form className="inline-form" onSubmit={(e) => { e.preventDefault(); void saveSite(); }}>
+              <input className="input" inputMode="url" aria-label="Your website address" placeholder="yourorganization.org" value={siteInput} onChange={(e) => setSiteInput(e.target.value)} required />
+              <button type="submit" className="btn" disabled={busy === "site"}>{busy === "site" ? "Saving…" : "Save website"}</button>
+              {website && <button type="button" className="btn-link" onClick={() => { setEditSite(false); setSiteInput(website); }}>Cancel</button>}
+              {website && <p className="small prose" style={{ width: "100%" }}>Changing your website means verifying it again before the next full report.</p>}
+            </form>
+          ) : (
+            <>
+              <p className="prose" style={{ overflowWrap: "anywhere" }}>Your website: <strong>{website}</strong> <button type="button" className="btn-link" onClick={() => setEditSite(true)}>Change</button></p>
+              <div className="actions"><button type="button" className="btn" disabled={busy === "run"} onClick={() => void run()}>{busy === "run" ? "Running audit…" : "Run audit"}</button></div>
+            </>
+          )}
         </Section>
       )}
 
@@ -127,6 +147,8 @@ function Audits({ me }: { me: Me }) {
           </div>
         </Section>
       )}
+
+      <FullReport me={me} website={website} />
 
       <Section title="History" id="history">
         {audits.length === 0 ? <p className="muted">No audits yet.</p> : (

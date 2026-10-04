@@ -7,7 +7,7 @@ import { checkCopy, pointsFor } from "./checks";
 // Visual vocabulary lives in app/globals.css (docs/design/design-system.pdf).
 
 
-export interface Me { userId: string; email: string; name: string; role: "owner" | "staff" | "viewer"; organizationId: string; organizationName: string }
+export interface Me { userId: string; email: string; name: string; role: "owner" | "staff" | "viewer"; organizationId: string; organizationName: string; plan: "free" | "pilot" | "paid"; websiteUrl: string | null }
 
 const NAV = [
   { href: "/dashboard", label: "Overview" },

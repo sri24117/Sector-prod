@@ -18,7 +18,7 @@ function website(raw: string): string | undefined {
 
 export default function SignupPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ organizationName: "", name: "", email: "", password: "", fcraSelfDeclared: false, panNumber: "", websiteUrl: "" });
+  const [form, setForm] = useState({ organizationName: "", name: "", email: "", password: "", fcraSelfDeclared: false, panNumber: "", websiteUrl: "", orgType: "" });
   const [fromAudit, setFromAudit] = useState(false);
 
   // Arriving from a free audit (/signup?url=...): carry the audited site over.
@@ -50,6 +50,7 @@ export default function SignupPage() {
           fcraSelfDeclared: form.fcraSelfDeclared,
           panNumber: form.panNumber || undefined,
           websiteUrl: website(form.websiteUrl),
+          orgType: form.orgType || undefined,
           fromAudit: fromAudit || undefined,
         }),
       });
@@ -78,6 +79,15 @@ export default function SignupPage() {
       <form onSubmit={handleSubmit}>
         <Field label="Organization name">
           <input className="input" value={form.organizationName} onChange={(e) => set("organizationName", e.target.value)} autoComplete="organization" required />
+        </Field>
+        <Field label="Type of organization">
+          <select className="input" value={form.orgType} onChange={(e) => set("orgType", e.target.value)} required>
+            <option value="" disabled>Choose one</option>
+            <option value="ngo">NGO or charity</option>
+            <option value="csr">CSR team of a company</option>
+            <option value="foundation">Foundation</option>
+            <option value="social_enterprise">Social enterprise</option>
+          </select>
         </Field>
         <Field label="Your name">
           <input className="input" value={form.name} onChange={(e) => set("name", e.target.value)} autoComplete="name" required />
