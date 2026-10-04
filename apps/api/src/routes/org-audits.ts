@@ -18,10 +18,17 @@ export async function registerOrgAuditRoutes(app: FastifyInstance): Promise<void
     const parsed = z.object({ url: z.string().min(1).optional() }).safeParse(request.body ?? {});
     if (!parsed.success) return reply.status(400).send({ error: "invalid_input", message: "Invalid body." });
 
+    // Own website only (full report spec): members cannot point SEctOr at other organizations' sites.
     const profile = await db.organizationProfile.get();
-    const raw = parsed.data.url ?? profile?.websiteUrl;
-    if (!raw) return reply.status(400).send({ error: "url_required", message: "Provide a url, or set a website on your organization profile." });
-    const url = normalizeUrl(raw);
+    if (!profile?.websiteUrl) return reply.status(400).send({ error: "url_required", message: "Add your website first." });
+    if (parsed.data.url) {
+      const asked = normalizeUrl(parsed.data.url.trim());
+      const host = (u: string) => new URL(u).hostname.toLowerCase().replace(/^www./, "");
+      if (!asked || host(asked) !== host(profile.websiteUrl)) {
+        return reply.status(403).send({ error: "own_site_only", message: "Audits run on your own website. To audit a different site, change your website first." });
+      }
+    }
+    const url = normalizeUrl(profile.websiteUrl);
     const verdict = url ? await assessUrl(url) : "blocked";
     if (verdict === "unresolvable") return reply.status(400).send({ error: "site_not_found", message: "Could not find a website at that address. Check the spelling and try again." });
     if (!url || verdict !== "ok") return reply.status(400).send({ error: "url_not_allowed", message: "That address can't be audited." });

@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+export const API_URL =process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 /** Fire-and-forget funnel signal (Phase 0-1 Goal #1). Never blocks or breaks the click it measures. */
 export function track(event: "fix_clicked" | "connect_cta_clicked", url?: string) {

@@ -10,8 +10,8 @@ import { startMockWordPress, type MockWp } from "./helpers/mock-wordpress.js";
 let app: FastifyInstance; let wp: MockWp;
 const APP_PASSWORD = "abcd efgh ijkl mnop";
 
-async function signup(name: string, email: string) {
-  const res = await app.inject({ method: "POST", url: "/auth/signup", payload: { organizationName: name, name: "Owner", email, password: "long-enough-password", websiteUrl: undefined } });
+async function signup(name: string, email: string, websiteUrl?: string) {
+  const res = await app.inject({ method: "POST", url: "/auth/signup", payload: { organizationName: name, name: "Owner", email, password: "long-enough-password", websiteUrl } });
   expect(res.statusCode).toBe(201);
   const c = res.cookies.find((x) => x.name === "sector_session")!;
   return { cookie: `${c.name}=${c.value}`, orgId: res.json().organizationId as string, userId: res.json().userId as string };
@@ -33,7 +33,7 @@ describe("Slice 3 remediation (WordPress)", () => {
   let auditId: string; let schemaFindingId: string; let robotsFindingId: string;
 
   it("connects WordPress, storing credentials ENCRYPTED and never returning them", async () => {
-    A = await signup("Hope NGO", "a@hope.org"); B = await signup("Other NGO", "b@other.org");
+    A = await signup("Hope NGO", "a@hope.org", wp.url); B = await signup("Other NGO", "b@other.org");
     const res = await call(A.cookie, "POST", "/connections/wordpress", { siteUrl: wp.url, username: "admin", applicationPassword: APP_PASSWORD });
     expect(res.statusCode).toBe(201);
     expect(JSON.stringify(res.json())).not.toContain(APP_PASSWORD);
@@ -126,10 +126,14 @@ describe("Slice 3 remediation (WordPress)", () => {
   it("SSRF: refuses loopback/private targets when private targets are not allowed", async () => {
     const prev = process.env.ALLOW_PRIVATE_TARGETS; process.env.ALLOW_PRIVATE_TARGETS = "0";
     try {
+      // In-app audits only target the org's own website, so the SSRF guard is exercised by
+      // pointing that website at private addresses.
       for (const target of ["http://127.0.0.1:1", "http://169.254.169.254/latest/meta-data", "http://10.0.0.5", "http://localhost"]) {
-        const r = await call(A.cookie, "POST", "/audits", { url: target });
+        await rawDb.update(schema.organizationProfiles).set({ websiteUrl: target }).where(eq(schema.organizationProfiles.organizationId, A.orgId));
+        const r = await call(A.cookie, "POST", "/audits", {});
         expect(r.statusCode, target).toBe(400); expect(r.json().error).toBe("url_not_allowed");
       }
+      await rawDb.update(schema.organizationProfiles).set({ websiteUrl: wp.url }).where(eq(schema.organizationProfiles.organizationId, A.orgId));
     } finally { process.env.ALLOW_PRIVATE_TARGETS = prev; }
   });
 });

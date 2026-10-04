@@ -31,9 +31,9 @@ All fetches go through the existing SSRF guard. Changing the profile website res
 
 ## The report
 
-Created with `POST /reports` (owner or staff; plan `pilot`/`paid`; website verified; at most one report queued or running per org, and 10 per org per day). It runs on the BullMQ queue `report` in the existing worker, **one at a time**, with a timeout of 4 minutes per report.
+Created with `POST /reports` (owner or staff; plan `pilot`/`paid`; website verified; at most one report queued or running per org, and 10 per org per day). It runs on the BullMQ queue `report` in the existing worker, **one at a time**, with a hard limit of 8 minutes per report (a typical slow NGO site takes about 2 minutes). A report that never finished stops blocking new ones after 15 minutes.
 
-1. **Crawl:** Playwright (Chromium) loads the homepage and follows same-site links breadth-first, up to **20 pages**, with a 15-second timeout per page. It uses a small built-in crawler rather than Crawlee, which keeps the worker lean.
+1. **Crawl:** Playwright (Chromium) loads the homepage and follows same-site links breadth-first, up to **20 pages**, 3 pages at a time, with a 15-second timeout per page (30 seconds and one retry for the homepage, since slow shared hosting is common). A 3-minute crawl budget is a safety net only. It uses a small built-in crawler rather than Crawlee, which keeps the worker lean.
 2. **Per page:** title, meta description, canonical, `h1`/`h2` counts, structured-data types, image alt coverage, word count, status code, and broken internal links found.
 3. **Lighthouse** (mobile) on the homepage plus up to 2 key pages: performance, SEO, accessibility and best-practices scores, LCP / CLS / TBT, and the top failed audits.
 4. **axe-core** on the homepage: accessibility violations by impact, with counts.

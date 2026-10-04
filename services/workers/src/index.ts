@@ -3,6 +3,7 @@ import { Worker, Queue, type Job } from "bullmq";
 import { Redis } from "ioredis";
 import { runAudit } from "@sector/crawler";
 import { runAllComplianceChecks, unavailableGateway } from "@sector/ad-grants";
+import { runReportJob } from "./report/run.js";
 
 // Concurrency is env-controlled per docs/decisions/ADR-0003-hosting-topology.md — do not hardcode.
 const connection = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379", { maxRetriesPerRequest: null });
@@ -20,7 +21,10 @@ const adGrantsWorker = new Worker("ad-grants-compliance", async () => {
   return res;
 }, { connection, concurrency: 1 });
 
-for (const w of [auditWorker, adGrantsWorker]) w.on("failed", (job, err) => console.error(`Job ${job?.id} (${w.name}) failed:`, err.message));
-console.log(`Worker started. concurrency=${concurrency}. Queues: audit, ad-grants-compliance (daily 03:00).`);
+// Full reports (ADR-0007): Chromium-heavy, so strictly one at a time with a long lock.
+const reportWorker = new Worker("report", async (job: Job<{ reportId: string; organizationId: string }>) => runReportJob(job.data), { connection, concurrency: 1, lockDuration: 10 * 60_000 });
 
-process.on("SIGTERM", async () => { await Promise.all([auditWorker.close(), adGrantsWorker.close(), adGrantsQueue.close()]); process.exit(0); });
+for (const w of [auditWorker, adGrantsWorker, reportWorker]) w.on("failed", (job, err) => console.error(`Job ${job?.id} (${w.name}) failed:`, err.message));
+console.log(`Worker started. concurrency=${concurrency}. Queues: audit, ad-grants-compliance (daily 03:00), report (1 at a time).`);
+
+process.on("SIGTERM", async () => { await Promise.all([auditWorker.close(), adGrantsWorker.close(), reportWorker.close(), adGrantsQueue.close()]); process.exit(0); });

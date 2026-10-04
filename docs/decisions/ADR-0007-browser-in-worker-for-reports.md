@@ -10,7 +10,7 @@ Paid organizations need a detailed SEO, website-health, UI/accessibility and soc
 
 ## Decision
 - **Where it runs:** Playwright's Chromium runs inside the existing `worker` process. No new service is added, so the modular monolith holds (ADR-0001).
-- **One report at a time:** reports run on their own BullMQ queue with concurrency 1, a 4-minute timeout per report, and a hard cap of 20 pages.
+- **One report at a time:** reports run on their own BullMQ queue with concurrency 1, an 8-minute limit per report that closes the browser when it is reached, and a hard cap of 20 pages.
 - **Memory:** the worker container keeps a memory limit (1.5 GB in compose), so a runaway render cannot starve the other apps.
 - **Network:** all browser traffic goes through an in-process forward proxy built on `@sector/shared/net-guard`. Browsers resolve DNS themselves, so this proxy is what keeps SSRF protection intact for sub-resources and Lighthouse.
 - **Image size:** the worker image moves to Debian slim, because Playwright does not support Alpine. It grows by roughly 450 MB; api and web are unaffected.

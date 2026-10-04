@@ -16,7 +16,8 @@
     "reset-link": "tsx src/scripts/reset-link.ts",
     "funnel": "tsx src/scripts/funnel-report.ts",
     "migrate": "tsx node_modules/@sector/db/src/migrate.ts",
-    "confirm-fcra": "tsx node_modules/@sector/db/src/confirm-fcra.ts"
+    "confirm-fcra": "tsx node_modules/@sector/db/src/confirm-fcra.ts",
+    "set-plan": "tsx src/scripts/set-plan.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
@@ -36,6 +37,7 @@
     "fastify": "^5.0.0",
     "ioredis": "^5.4.0",
     "tsx": "^4.19.0",
+    "undici": "^6.19.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {

@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, text, boolean, timestamp, uniqueIndex, index, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, text, boolean, timestamp, uniqueIndex, index, integer, jsonb, customType } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // Ported from the original Prisma schema (see ADR-0002 addendum for why).
@@ -12,6 +12,9 @@ export const membershipRole = pgEnum("membership_role", ["owner", "staff", "view
 export const organizations = pgTable("organizations", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
+  // free | pilot | paid. Set only by ops after invoicing (apps/api/src/scripts/set-plan.ts,
+  // ADR-0006 manual invoicing). Gates the full report.
+  plan: text("plan").notNull().default("free"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -35,6 +38,8 @@ export const organizationProfiles = pgTable("organization_profiles", {
   section12ANumber: text("section_12a_number"),
   section80GNumber: text("section_80g_number"),
   websiteUrl: text("website_url"),
+  // Self-declared at signup: ngo | csr | foundation | social_enterprise. Ops read it before set-plan.
+  orgType: text("org_type"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -229,3 +234,20 @@ export const contentAssets = pgTable("content_assets", {
   status: text("status").notNull().default("draft"), createdBy: text("created_by").notNull(),
   model: text("model"), createdAt: created(),
 }, (t) => [index("content_org_idx").on(t.organizationId)]);
+
+// ---------------- Full report (docs/superpowers/specs/2026-10-04-full-report-design.md) ----------------
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+// Proof that an organization controls the website its full reports run on.
+export const siteVerifications = pgTable("site_verifications", {
+  id: id(), organizationId: orgRef().unique(), host: text("host").notNull(), token: text("token").notNull(),
+  method: text("method"), verifiedAt: timestamp("verified_at", { withTimezone: true }), createdAt: created(),
+});
+
+export const reports = pgTable("reports", {
+  id: id(), organizationId: orgRef(), siteUrl: text("site_url").notNull(),
+  status: text("status").notNull().default("queued"), // queued | running | done | failed
+  error: text("error"), summary: jsonb("summary"), html: text("html"), pdf: bytea("pdf"),
+  createdBy: text("created_by").notNull(), createdAt: created(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+}, (t) => [index("reports_org_created_idx").on(t.organizationId, t.createdAt)]);

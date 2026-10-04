@@ -371,3 +371,20 @@ select.input { appearance: auto; }
 @media (max-width: 480px) {
   .card { padding: var(--s-4); }
 }
+
+/* Full report: copyable verification codes, one per line */
+.code-line {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.methods { padding-left: var(--s-5); max-width: var(--measure); }
+.methods > li + li { margin-top: var(--s-4); }
+.methods > li > * + * { margin-top: var(--s-2); }
