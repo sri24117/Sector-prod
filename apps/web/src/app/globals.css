@@ -10,6 +10,8 @@
   --pine: #1f4d3b;
   --ochre: #9c6b1f;
   --on-pine: #f6f7f3;
+  --surface: #fbfcf9;           /* card face, a step above paper */
+  --radius-card: 12px;          /* cards only; inputs and buttons keep --radius */
 
   --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px;
   --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 64px;
@@ -29,6 +31,7 @@
     --pine: #4a8a6f;
     --ochre: #c99445;
     --on-pine: #161b17;
+    --surface: #1c221d;
     color-scheme: dark;
   }
 }
@@ -306,4 +309,65 @@ select.input { appearance: auto; }
   a, .btn-link { color: var(--ink); text-decoration-color: var(--pine); }
   .btn { background: transparent; color: var(--ink); border-color: var(--pine); border-width: 2px; }
   .btn-quiet { border-color: var(--line); border-width: 1px; }
+}
+
+/* ---------- Guided journey (docs/superpowers/specs/2026-10-04-guided-journey-design.md) ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: var(--s-5);
+}
+.card + .card { margin-top: var(--s-4); }
+.card-quiet { padding: var(--s-4) var(--s-5); }
+
+.chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.chip {
+  display: inline-flex; align-items: center;
+  padding: 2px var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 13px; line-height: 1.5;
+  color: var(--ink);
+  background: var(--paper);
+}
+.chip-win { border-color: var(--pine); }
+
+/* Four-step progress strip */
+.journey { list-style: none; padding: 0; margin: 0 0 var(--s-6); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-2); }
+.journey li { display: flex; flex-direction: column; gap: var(--s-2); font-size: 13px; line-height: 1.4; color: var(--ink-muted); }
+.journey li::before { content: ""; display: block; height: 4px; border-radius: 999px; background: var(--line); }
+.journey li[data-state="done"] { color: var(--ink); }
+.journey li[data-state="done"]::before { background: var(--ink-muted); }
+.journey li[aria-current="step"] { color: var(--ink); font-weight: 600; }
+.journey li[aria-current="step"]::before { background: var(--pine); }
+.journey-n { font-variant-numeric: tabular-nums; }
+.journey-compact { display: none; font-size: 13px; color: var(--ink-muted); margin: 0 0 var(--s-5); }
+.journey-compact strong { color: var(--ink); }
+@media (max-width: 560px) {
+  .journey { display: none; }
+  .journey-compact { display: block; }
+  .journey-compact::before { content: ""; display: block; height: 4px; border-radius: 999px; margin-bottom: var(--s-2); background: linear-gradient(to right, var(--pine) var(--journey-done), var(--line) var(--journey-done)); }
+}
+
+/* Insight cards */
+.insights { list-style: none; padding: 0; margin: 0; max-width: 72ch; }
+.insight { display: flex; gap: var(--s-3); }
+.insight .mark { margin-top: 4px; }
+.insight-body { flex: 1; min-width: 0; }
+.insight-body > * + * { margin-top: var(--s-2); }
+.insight-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-1) var(--s-3); }
+.insight-title { font-weight: 600; font-size: 16px; line-height: 1.4; }
+.insight-action { margin-top: var(--s-4) !important; }
+.insight-compact .insight-body > * + * { margin-top: var(--s-1); }
+.insights-passed-label { margin: var(--s-6) 0 var(--s-3); }
+
+/* Value summary and next step */
+.value-card .value-line { font-family: var(--font-display), Georgia, serif; font-size: 20px; line-height: 1.3; font-weight: 500; text-wrap: balance; }
+.next-step-label { font-size: 13px; color: var(--ink-muted); }
+.next-step-title { font-family: var(--font-display), Georgia, serif; font-size: 20px; line-height: 1.3; font-weight: 500; margin-top: var(--s-1); }
+.next-step .actions { margin-top: var(--s-4); }
+
+@media (max-width: 480px) {
+  .card { padding: var(--s-4); }
 }

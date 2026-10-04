@@ -384,7 +384,7 @@
       "One accent (pine), spent only on primary actions/links and \"passed\".",
       "Ochre means \"needs attention\". True red is reserved and unused.",
       "Newsreader announces (score, page headlines, history-row scores); Public Sans explains (everything else, including the wordmark).",
-      "One 6px radius; one 4-to-64px spacing scale.",
+      "6px radius on controls, 12px on cards, pill on chips and progress bars; one 4-to-64px spacing scale. Guided four-step journey with insight cards (2026-10-04).",
       "Pass/fail is always a drawn mark plus a word, never colour alone."
     ],
     "rules": [
@@ -434,7 +434,7 @@
       "Do pair every pass/fail with a drawn SVG mark and the words \"Passed\" or \"Needs attention\" in ink.",
       "Do keep pine to primary actions/links, the pass mark, focus, active-nav and selection states.",
       "Do take every margin, padding and gap from the 4/8/12/16/24/32/48/64px scale.",
-      "Do use a single 6px radius and 1px hairlines for all structure.",
+      "Do use 6px on buttons and inputs, 12px on cards (surface #FBFCF9, 1px hairline, no shadow), and pill shapes only for chips and progress bars.",
       "Do keep hover and focus changes to 150ms opacity/colour/underline-thickness, and honour `prefers-reduced-motion` everywhere, including the count-up.",
       "Do keep the score rule ink below 70 and pine at 70 or above; change the threshold only in GOOD_SCORE."
     ],

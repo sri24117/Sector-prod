@@ -63,6 +63,8 @@ typography:
 rounded:
   focus: "2px"
   md: "6px"
+  card: "12px"
+  pill: "999px"
 spacing:
   s-1: "4px"
   s-2: "8px"
@@ -136,7 +138,8 @@ The PDF rejects, on the user's authority: the warm-cream-and-terracotta AI look,
 - One accent (pine), spent only on primary actions/links and "passed".
 - Ochre means "needs attention". True red is reserved and unused.
 - Newsreader announces (score, page headlines, history-row scores); Public Sans explains (everything else, including the wordmark).
-- One 6px radius; one 4-to-64px spacing scale.
+- 6px radius on controls, 12px on cards, pill on chips and progress bars; one 4-to-64px spacing scale.
+- The journey is guided: a four-step progress strip, insight cards, and one "next step" at a time (2026-10-04).
 - Pass/fail is always a drawn mark plus a word, never colour alone.
 
 ## Colors
@@ -210,6 +213,9 @@ The system is flat. There are no shadows anywhere, by default or on hover. Separ
 
 ## Shapes
 
+**Updated 2026-10-04 (guided journey, approved by the product owner):** cards use a 12px radius on the `--surface` face (#FBFCF9 light, #1C221D dark) with a 1px hairline and no shadow; chips and progress bars are pills. Controls keep 6px. See `docs/superpowers/specs/2026-10-04-guided-journey-design.md`.
+
+
 One radius, 6px, is used on buttons, inputs and the rare contained surface. It is not 0 (too severe) and not 16px or more (too consumer). The focus ring uses a 2px radius. Borders are always 1px hairlines, except the dark-mode primary button border (2px pine) and the score rule (2px ink). The drawn marks are 18px SVGs with a single 1.75px stroke and round caps.
 
 ## Components
@@ -254,7 +260,9 @@ Used for history, consents and alerts. Each is a flex row with the main text lef
 - **Do** pair every pass/fail with a drawn SVG mark and the words "Passed" or "Needs attention" in ink.
 - **Do** keep pine to primary actions/links, the pass mark, focus, active-nav and selection states.
 - **Do** take every margin, padding and gap from the 4/8/12/16/24/32/48/64px scale.
-- **Do** use a single 6px radius and 1px hairlines for all structure.
+- **Do** use 6px on buttons and inputs, 12px on cards (surface #FBFCF9, 1px hairline, no shadow), and pill shapes only for chips and progress bars.
+- **Do** give every failing insight an impact chip (its real point weight) and a plain effort chip, with the biggest win first.
+- **Do** keep exactly one primary next action visible per screen.
 - **Do** keep hover and focus changes to 150ms opacity/colour/underline-thickness, and honour `prefers-reduced-motion` everywhere, including the count-up.
 - **Do** keep the score rule ink below 70 and pine at 70 or above; change the threshold only in `GOOD_SCORE`.
 
