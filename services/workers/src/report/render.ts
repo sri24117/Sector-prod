@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Action, ReportData } from "./types.js";
-import { bucketOf, overallScore, plainAxe } from "./analysis.js";
+import { bucketOf, homeLighthouse, overallScore, plainAxe } from "./analysis.js";
+import { SCORE_MODEL } from "./types.js";
 
 const SERIOUS: Record<string, string> = { critical: "Blocks some people", serious: "Hard for some people", moderate: "Annoying", minor: "Minor" };
 
@@ -29,7 +30,7 @@ const yes = (ok: boolean) => (ok ? `<span class="ok">✓ Yes</span>` : `<span cl
 
 function summary(d: ReportData, actions: Action[]): string[] {
   const out: string[] = [];
-  const lh = d.lighthouse[0];
+  const lh = homeLighthouse(d);
   if (lh) {
     const s = lh.scores;
     out.push(s.performance >= 90 ? "Your homepage loads quickly on phones." : s.performance >= 50 ? "Your homepage loads at an acceptable speed on phones, with room to improve." : "Your homepage is slow on phones, which loses visitors before they read anything.");
@@ -45,7 +46,7 @@ function summary(d: ReportData, actions: Action[]): string[] {
 
 export function renderReportHtml(d: ReportData, actions: Action[]): string {
   const score = overallScore(d);
-  const lh = d.lighthouse[0];
+  const lh = homeLighthouse(d);
   const date = new Date(d.generatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
   const wins = actions.slice(0, 3);
   const buckets = (["Do first", "This month", "Later"] as const).map((b) => [b, actions.filter((a) => bucketOf(a) === b)] as const);
@@ -97,10 +98,12 @@ ${lh ? `<table><tbody><tr><th>Main content appears after</th><td>${lh.metrics.lc
 <tr><th>Secure address (https)</th><td>${yes(d.siteUrl.startsWith("https://"))}</td></tr>
 <tr><th>Fits phone screens</th><td>${yes(d.pages.every((p) => p.hasViewport))}</td></tr></tbody></table>` : ""}
 ${d.screenshots.desktop || d.screenshots.mobile ? `<div class="shots">${d.screenshots.desktop ? `<img alt="Your homepage on a computer" src="data:image/jpeg;base64,${d.screenshots.desktop}">` : ""}${d.screenshots.mobile ? `<img alt="Your homepage on a phone" src="data:image/jpeg;base64,${d.screenshots.mobile}">` : ""}</div>` : ""}
-<h3>Broken links</h3>${d.brokenLinks.length ? `<ul class="plain">${d.brokenLinks.map((b) => `<li>${esc(path(b.url))} <span class="small">error ${b.status}, linked from ${esc(path(b.foundOn))}</span></li>`).join("")}</ul>` : `<p>${yes(true)} None found on the pages we checked.</p>`}</section>
+<h3>Broken links</h3>${d.brokenLinks.length ? `<ul class="plain">${d.brokenLinks.map((b) => `<li>${esc(path(b.url))} <span class="small">error ${b.status}, linked from ${esc(path(b.foundOn))}</span></li>`).join("")}</ul>` : `<p>${yes(true)} None found on the pages we checked.</p>`}
+${d.unreachable.length ? `<p class="small">These pages did not load in time while we checked, so we could not tell whether they work. Open them yourself to be sure: ${d.unreachable.slice(0, 10).map((u) => esc(path(u.url))).join(", ")}.</p>` : ""}</section>
 
 <section><h2>Accessibility</h2><p class="muted">Whether people with low vision, or who use a keyboard or screen reader, can use your homepage.</p>
-${d.axe.length ? `<table><thead><tr><th>What we found</th><th>How serious</th><th>Places</th></tr></thead><tbody>${d.axe.slice(0, 12).map((v) => `<tr><td>${esc(plainAxe(v.id, v.help))}</td><td>${esc(SERIOUS[v.impact ?? "minor"] ?? "Minor")}</td><td>${v.nodes}</td></tr>`).join("")}</tbody></table>` : `<p>${yes(true)} No accessibility problems found automatically on the homepage.</p>`}
+${d.axe === null ? `<p>The automated accessibility scan could not run on your homepage this time, so we cannot say whether it has problems. Creating a new report usually fixes this.</p>` : d.axe.length ? `<table><thead><tr><th>What we found</th><th>How serious</th><th>Places</th></tr></thead><tbody>${d.axe.slice(0, 12).map((v) => `<tr><td>${esc(plainAxe(v.id, v.help))}</td><td>${esc(SERIOUS[v.impact ?? "minor"] ?? "Minor")}</td><td>${v.nodes}</td></tr>`).join("")}</tbody></table>` : `<p>${yes(true)} No accessibility problems found automatically on the homepage.</p>`}
+<p class="small">Automated checks find many common problems, not all of them. This section is not a full accessibility (WCAG) audit, which needs a person testing the site.</p>
 <p class="small">Images without a description across checked pages: ${d.pages.reduce((n, p) => n + p.imagesMissingAlt, 0)} of ${d.pages.reduce((n, p) => n + p.images, 0)}.</p></section>
 
 <section><h2>Social and sharing</h2><p class="muted">The social profiles your website points to, and how your site looks when someone shares it.</p>
@@ -113,6 +116,6 @@ ${buckets.map(([b, list]) => list.length ? `<h3>${b}</h3>${list.map((a) => `<div
 ${actions.length ? "" : `<p>${yes(true)} Nothing to fix right now.</p>`}</section>
 
 ${d.notes.length ? `<section><h2>What we could not check</h2><ul class="plain">${d.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></section>` : ""}
-<p class="small" style="margin-top:48px">Prepared by SEctOr on ${esc(date)} for ${esc(d.organizationName)}. Speed and accessibility measured with Lighthouse and axe-core on a simulated mid-range phone.</p>
+<p class="small" style="margin-top:48px">Prepared by SEctOr on ${esc(date)} for ${esc(d.organizationName)}. Speed and accessibility measured with Lighthouse and axe-core on a simulated mid-range phone. Score model ${SCORE_MODEL}.</p>
 </main></body></html>`;
 }

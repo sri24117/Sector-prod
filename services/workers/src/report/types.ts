@@ -36,13 +36,17 @@ export interface ReportData {
   organizationName: string;
   generatedAt: string;
   pages: PageFacts[];
-  brokenLinks: { url: string; status: number; foundOn: string }[];
+  brokenLinks: { url: string; status: number; foundOn: string }[]; // the server answered with an error (4xx/5xx)
+  unreachable: { url: string; foundOn: string }[]; // did not load in time: not proof the link is broken
   lighthouse: LighthouseResult[];
-  axe: AxeViolation[];
+  axe: AxeViolation[] | null; // null = the scan could not run, which is not the same as "no problems"
   screenshots: { desktop?: string; mobile?: string }; // base64 JPEG
   social: SocialProfile[];
   notes: string[]; // anything we could not check, said plainly
 }
+
+/** Bump when the way the overall score is calculated changes, so old reports stay explainable. */
+export const SCORE_MODEL = "2026-10.1";
 
 export type Impact = "high" | "medium" | "low";
 export interface Action {

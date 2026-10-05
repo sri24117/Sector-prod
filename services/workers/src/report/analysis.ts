@@ -25,9 +25,28 @@ export function socialProfilesFrom(links: string[]): SocialProfile[] {
   return PLATFORMS.filter((p) => found.has(p.name)).map((p) => ({ platform: p.name, url: found.get(p.name)!, state: "unchecked" as const }));
 }
 
-/** Mean of the four Lighthouse areas on the homepage, or null if Lighthouse could not run. */
+/** The Lighthouse result for the homepage itself, never a stand-in from another page. */
+export function homeLighthouse(d: ReportData) {
+  const home = d.pages[0]?.url;
+  return home ? d.lighthouse.find((l) => l.url === home) : undefined;
+}
+
+/** What was actually measured, stored with every report so a score can always be explained. */
+export function coverage(d: ReportData) {
+  return {
+    pages: d.pages.length,
+    speedTests: d.lighthouse.length,
+    homepageSpeedTest: !!homeLighthouse(d),
+    accessibilityScan: d.axe !== null,
+    socialLinksChecked: d.social.filter((s) => s.state !== "unchecked").length,
+    socialLinks: d.social.length,
+    pagesNotLoaded: d.unreachable.length,
+  };
+}
+
+/** Mean of the four Lighthouse areas on the homepage, or null if that test could not run. */
 export function overallScore(d: ReportData): number | null {
-  const home = d.lighthouse[0];
+  const home = homeLighthouse(d);
   if (!home) return null;
   const s = home.scores;
   return Math.round((s.performance + s.seo + s.accessibility + s.bestPractices) / 4);
@@ -61,7 +80,7 @@ export function buildActions(d: ReportData): Action[] {
 
   // ---- Website health ----
   if (d.brokenLinks.length) add({ section: "Website health", title: "Fix links that go nowhere", why: "Visitors and search engines who follow these links hit an error page and often leave.", impact: "high", effort: "About 5 minutes per link", owner: "Your web person", where: d.brokenLinks.map((b) => `${b.url} (found on ${b.foundOn})`) });
-  const lh = d.lighthouse[0];
+  const lh = homeLighthouse(d);
   if (lh) {
     const lcp = lh.metrics.lcpMs;
     if (lh.scores.performance < 50 || (lcp !== undefined && lcp > 4000)) add({ section: "Website health", title: "Make your homepage load faster", why: `On a typical phone your main content appears after ${lcp ? (lcp / 1000).toFixed(1) + " seconds" : "a long wait"}. Many visitors leave after about 3 seconds, and search engines favour faster pages.`, impact: "high", effort: "1 to 3 hours, usually smaller images and fewer plugins", owner: "Your web person", where: [lh.url] });
@@ -75,7 +94,7 @@ export function buildActions(d: ReportData): Action[] {
   // ---- Accessibility ----
   const alt = d.pages.reduce((n, p) => n + p.imagesMissingAlt, 0);
   if (alt > 0) add({ section: "Accessibility", title: "Describe your images", why: `${alt} image${alt === 1 ? " has" : "s have"} no description, so screen-reader users miss them and search engines cannot understand them.`, impact: "medium", effort: "About 2 minutes per image", owner: "You", where: pagesWhere((p) => p.imagesMissingAlt > 0) });
-  const serious = d.axe.filter((v) => v.impact === "serious" || v.impact === "critical");
+  const serious = (d.axe ?? []).filter((v) => v.impact === "serious" || v.impact === "critical");
   for (const v of serious.slice(0, 4)) add({ section: "Accessibility", title: plainAxe(v.id, v.help), why: `${v.nodes} place${v.nodes === 1 ? "" : "s"} on your homepage make this hard for people with low vision or who use a keyboard or screen reader.`, impact: v.impact === "critical" ? "high" : "medium", effort: "About 30 minutes", owner: "Your web person", where: home ? [home.url] : [] });
 
   // ---- Social and sharing ----

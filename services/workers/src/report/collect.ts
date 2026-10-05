@@ -79,7 +79,8 @@ function readFacts(): Omit<PageFacts, "url" | "status"> {
 export interface CrawlResult {
   pages: PageFacts[];
   brokenLinks: { url: string; status: number; foundOn: string }[];
-  axe: AxeViolation[];
+  unreachable: { url: string; foundOn: string }[];
+  axe: AxeViolation[] | null;
   screenshots: { desktop?: string; mobile?: string };
   notes: string[];
 }
@@ -96,7 +97,8 @@ export async function crawlSite(browser: Browser, startUrl: string, signal: Abor
   const seen = new Set<string>([normalize(startUrl)!]);
   const linkFrom = new Map<string, string>(); // internal link -> first page it was seen on
   const broken: CrawlResult["brokenLinks"] = [];
-  let axe: AxeViolation[] = [];
+  const unreachable: CrawlResult["unreachable"] = [];
+  let axe: AxeViolation[] | null = null;
   const screenshots: CrawlResult["screenshots"] = {};
   // site.org/x and www.site.org/x (or a redirect onto a page already read) are one page.
   const pageKey = (u: string) => new URL(u).pathname.replace(/\/+$/, "").toLowerCase();
@@ -126,7 +128,7 @@ export async function crawlSite(browser: Browser, startUrl: string, signal: Abor
         if (!seen.has(l)) { seen.add(l); queue.push({ url: l, from: finalUrl }); }
       }
       if (home) {
-        axe = await runAxe(page).catch(() => { notes.push("The detailed accessibility scan could not run on your homepage."); return []; });
+        axe = await runAxe(page).catch(() => { notes.push("The automated accessibility scan could not run on your homepage, so that section is incomplete."); return null; });
         screenshots.desktop = (await page.screenshot({ type: "jpeg", quality: 60 })).toString("base64");
         await page.setViewportSize({ width: 390, height: 844 });
         await page.waitForTimeout(500);
@@ -134,7 +136,7 @@ export async function crawlSite(browser: Browser, startUrl: string, signal: Abor
       }
     } catch (err) {
       if (home) throw err instanceof Error ? err : new Error(String(err));
-      broken.push({ url, status: 0, foundOn: from });
+      unreachable.push({ url, foundOn: from }); // a timeout or network error is not proof the link is broken
     } finally {
       await page.close().catch(() => undefined);
     }
@@ -154,7 +156,7 @@ export async function crawlSite(browser: Browser, startUrl: string, signal: Abor
     }));
     const ranOut = pages.length < MAX_PAGES && queue.length > 0 && Date.now() >= until;
     // Links we saw but did not visit: a quick status check (at most 30 seconds) so broken ones still appear.
-    const unvisited = [...linkFrom.keys()].filter((l) => !pages.some((p) => p.url === l) && !broken.some((b) => b.url === l)).slice(0, 30);
+    const unvisited = [...linkFrom.keys()].filter((l) => !pages.some((p) => p.url === l) && !broken.some((b) => b.url === l) && !unreachable.some((u) => u.url === l)).slice(0, 30);
     const checkUntil = Date.now() + 30_000;
     await mapLimit(unvisited, 4, async (l) => {
       if (Date.now() > checkUntil || signal.aborted) return;
@@ -165,7 +167,7 @@ export async function crawlSite(browser: Browser, startUrl: string, signal: Abor
   } finally {
     await context.close().catch(() => undefined);
   }
-  return { pages, brokenLinks: broken, axe, screenshots, notes };
+  return { pages, brokenLinks: broken, unreachable, axe, screenshots, notes };
 }
 
 async function runAxe(page: Page): Promise<AxeViolation[]> {
