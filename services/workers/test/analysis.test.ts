@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { socialProfilesFrom, buildActions, bucketOf, overallScore } from "../src/report/analysis.js";
+import { socialProfilesFrom, buildActions, bucketOf, overallScore, coverage } from "../src/report/analysis.js";
 import { renderReportHtml, esc } from "../src/report/render.js";
 import type { PageFacts, ReportData } from "../src/report/types.js";
 
@@ -11,7 +11,7 @@ const page = (over: Partial<PageFacts> = {}): PageFacts => ({
 
 const data = (over: Partial<ReportData> = {}): ReportData => ({
   siteUrl: "https://ngo.example.org/", organizationName: "Asha Foundation", generatedAt: "2026-10-04T10:00:00.000Z",
-  pages: [page()], brokenLinks: [], lighthouse: [{ url: "https://ngo.example.org/", scores: { performance: 90, seo: 95, accessibility: 92, bestPractices: 100 }, metrics: { lcpMs: 1800, cls: 0.02, tbtMs: 100 }, failed: [] }],
+  pages: [page()], brokenLinks: [], unreachable: [], lighthouse: [{ url: "https://ngo.example.org/", scores: { performance: 90, seo: 95, accessibility: 92, bestPractices: 100 }, metrics: { lcpMs: 1800, cls: 0.02, tbtMs: 100 }, failed: [] }],
   axe: [], screenshots: {}, social: [], notes: [], ...over,
 });
 
@@ -80,5 +80,40 @@ describe("report html", () => {
     const html = renderReportHtml(data(), buildActions(data()));
     for (const heading of ["Summary", "Search", "Website health", "Accessibility", "Social and sharing", "Your action plan"]) expect(html).toContain(heading);
     expect(html).toContain("Asha Foundation");
+  });
+});
+
+// "We could not check" must never read as a result (paid report, spec 2026-10-04).
+describe("unknown is not the same as failed or passed", () => {
+  const keyOnly = { url: "https://ngo.example.org/donate", scores: { performance: 20, seo: 40, accessibility: 30, bestPractices: 40 }, metrics: { lcpMs: 9000 }, failed: [] };
+
+  it("a crashed accessibility scan says so instead of reporting no problems", () => {
+    const d = data({ axe: null });
+    const html = renderReportHtml(d, buildActions(d));
+    expect(html).toContain("could not run on your homepage");
+    expect(html).not.toContain("No accessibility problems found");
+    expect(coverage(d).accessibilityScan).toBe(false);
+  });
+
+  it("another page never stands in for a homepage speed test that failed", () => {
+    const d = data({ lighthouse: [keyOnly] });
+    expect(overallScore(d)).toBeNull();
+    expect(buildActions(d).map((a) => a.title)).not.toContain("Make your homepage load faster");
+    expect(coverage(d)).toMatchObject({ speedTests: 1, homepageSpeedTest: false });
+  });
+
+  it("pages that only timed out are not called broken links", () => {
+    const d = data({ unreachable: [{ url: "https://ngo.example.org/slow", foundOn: "https://ngo.example.org/" }] });
+    expect(buildActions(d).map((a) => a.title)).not.toContain("Fix links that go nowhere");
+    const html = renderReportHtml(d, buildActions(d));
+    expect(html).toContain("did not load in time");
+    expect(html).toContain("None found on the pages we checked");
+  });
+
+  it("the report states the score model and that automated checks are not a full audit", () => {
+    const html = renderReportHtml(data(), buildActions(data()));
+    expect(html).toMatch(/Score model \d{4}-\d{2}\.\d+/);
+    expect(html).toContain("not a full accessibility (WCAG) audit");
+    expect(html).not.toMatch(/WCAG[- ]compliant|fully accessible/i);
   });
 });

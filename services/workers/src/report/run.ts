@@ -1,9 +1,9 @@
 import { scopedDb } from "@sector/db";
 import { startGuardedProxy } from "./proxy.js";
 import { crawlSite, launchBrowser, runLighthouse, renderPdf, checkSocial } from "./collect.js";
-import { buildActions, overallScore, socialProfilesFrom, bucketOf } from "./analysis.js";
+import { buildActions, overallScore, socialProfilesFrom, bucketOf, homeLighthouse, coverage } from "./analysis.js";
 import { renderReportHtml } from "./render.js";
-import type { LighthouseResult, ReportData } from "./types.js";
+import { SCORE_MODEL, type LighthouseResult, type ReportData } from "./types.js";
 
 // One full report, start to finish (spec 2026-10-04-full-report-design.md, ADR-0007).
 // Runs on the "report" queue with concurrency 1. Never throws: failures are stored on the row.
@@ -37,7 +37,7 @@ export async function buildReport(siteUrl: string, organizationName: string, sig
     const social = await checkSocial(socialProfilesFrom(crawl.pages.flatMap((p) => p.socialLinks)));
     const data: ReportData = {
       siteUrl, organizationName, generatedAt: new Date().toISOString(),
-      pages: crawl.pages, brokenLinks: crawl.brokenLinks, lighthouse, axe: crawl.axe, screenshots: crawl.screenshots, social, notes,
+      pages: crawl.pages, brokenLinks: crawl.brokenLinks, unreachable: crawl.unreachable, lighthouse, axe: crawl.axe, screenshots: crawl.screenshots, social, notes,
     };
     const actions = buildActions(data);
     const html = renderReportHtml(data, actions);
@@ -68,8 +68,10 @@ export async function runReportJob(job: { reportId: string; organizationId: stri
     if (controller.signal.aborted) throw new Error("timeout");
     const actions = buildActions(data);
     const summary = {
+      scoreModel: SCORE_MODEL,
       overall: overallScore(data),
-      areas: data.lighthouse[0]?.scores ?? null,
+      areas: homeLighthouse(data)?.scores ?? null,
+      coverage: coverage(data),
       pages: data.pages.length,
       actions: { doFirst: actions.filter((a) => bucketOf(a) === "Do first").length, thisMonth: actions.filter((a) => bucketOf(a) === "This month").length, later: actions.filter((a) => bucketOf(a) === "Later").length },
       topActions: actions.slice(0, 3).map((a) => a.title),

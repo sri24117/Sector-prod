@@ -7,7 +7,7 @@ import { GOOD_SCORE, Mark, Message, Section, useGuard, when, type Me } from "../
 // then prove you own the website, then create, view and download reports.
 
 interface Verification { host: string; verified: boolean; method: string | null; metaTag: string; dnsRecord: { type: string; name: string; value: string } }
-interface ReportSummary { overall: number | null; areas: { performance: number; seo: number; accessibility: number; bestPractices: number } | null; pages: number; actions: { doFirst: number; thisMonth: number; later: number }; topActions: string[] }
+interface ReportSummary { coverage?: { homepageSpeedTest: boolean; accessibilityScan: boolean; pagesNotLoaded: number }; overall: number | null; areas: { performance: number; seo: number; accessibility: number; bestPractices: number } | null; pages: number; actions: { doFirst: number; thisMonth: number; later: number }; topActions: string[] }
 interface Report { id: string; siteUrl: string; status: "queued" | "running" | "done" | "failed"; error: string | null; summary: ReportSummary | null; createdAt: string; finishedAt: string | null }
 
 const METHOD_LABEL: Record<string, string> = { wordpress: "your WordPress connection", meta: "the code on your homepage", dns: "your DNS record" };
@@ -196,6 +196,9 @@ function LatestReportCard({ report: r }: { report: Report }) {
             </div>
           ))}
         </dl>
+      )}
+      {s?.coverage && (!s.coverage.homepageSpeedTest || !s.coverage.accessibilityScan) && (
+        <p className="notice notice-attention"><Mark passed={false} /><span>Some checks could not run this time{!s.coverage.homepageSpeedTest ? ", including the speed test, so there is no overall score" : ""}. The report lists what is missing; creating a new report usually completes them.</span></p>
       )}
       {s && s.topActions.length > 0 && (
         <div className="report-fixes">
