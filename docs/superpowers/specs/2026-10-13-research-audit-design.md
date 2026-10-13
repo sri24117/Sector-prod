@@ -78,6 +78,16 @@ Most organizations will not be on WordPress. The audit reads the public website 
 - **Fixes:** every fix is written as copy-paste text (title, description, schema snippet, alt text) plus steps for the detected platform, for example Wix: Marketing & SEO, SEO Tools. Fixes are applied by hand by the owner or the organization's web person. Automatic fixing exists only for a connected WordPress site, through the connector, and is out of scope for v1.
 - **Connectors for other platforms** (Wix, Webflow and so on) are added behind the connector interface only when pilot organizations need them. The platform split of the first pilot organizations decides which comes first.
 
+## Fetching and browser
+
+Follows ADR-0007 (self-hosted Playwright Chromium in the worker). No new service and no third-party scraper; Firecrawl stays rejected (AGPL-3.0, heavy stack, third-party data processor).
+
+- **Default:** plain HTTP fetch with cheerio, through the existing SSRF guard.
+- **Fallback:** Playwright when the page looks empty (see Non-WordPress sites).
+- **Always in the browser:** screenshots, Lighthouse (speed and Core Web Vitals) and axe-core (accessibility) for the UI/UX pillar, reusing the full-report pipeline.
+- **Limits:** the research audit runs on the report queue (concurrency 1) with the ADR-0007 caps (20 pages, time limit, worker memory cap). Peer sites use the same fetcher and count toward the time limit. Expect a run to take tens of minutes on the current host. Revisit Browserless or a separate render host if runs queue for more than 10 minutes.
+- **Peer discovery** needs a search source (a search API or the web search tool). This is the one new external dependency; it is chosen when planning build step 5 and recorded in an ADR.
+
 ## Build order
 
 1. Migration 0004 and the plan and verification gate.
