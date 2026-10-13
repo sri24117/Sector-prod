@@ -28,6 +28,19 @@ describe("detectPlatform", () => {
     expect(detectPlatform("   \n", {})).toBe("unknown");
   });
 
+  it("treats dots in host signals as literal, not wildcards", () => {
+    for (const head of [
+      '<script src="https://staticXwixstatic.com/a.js"></script>',
+      '<script src="https://static1Xsquarespace.com/a.js"></script>',
+      '<link href="https://assetsXwebsite-filesXcom/x.css">',
+      '<link href="https://uploads-sslXwebflow.com/x.css">',
+      '<script src="https://cdnXshopify.com/x.js"></script>',
+      '<meta name="generator" content="WixXcom">',
+    ]) {
+      expect(detectPlatform(page(head), {})).toBe("custom");
+    }
+  });
+
   it("does not confuse a page that merely mentions WordPress in its text", () => {
     expect(detectPlatform(page("", "<p>We built this with WordPress and love it.</p>"), {})).toBe("custom");
   });
