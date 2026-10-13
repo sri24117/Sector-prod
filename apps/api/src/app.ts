@@ -16,6 +16,7 @@ import { registerFunnelRoutes } from "./lib/funnel.js";
 import { registerReportRoutes, type ReportQueue } from "./routes/reports.js";
 import { registerResearchAuditRoutes, type ResearchQueue } from "./routes/research-audits.js";
 import { bullReportQueue } from "./lib/report-queue.js";
+import { bullResearchQueue } from "./lib/research-queue.js";
 
 // Single place the server is assembled, so tests exercise the exact production wiring.
 export async function buildApp(opts: { logger?: boolean; adsGateway?: GoogleAdsGateway; llmProvider?: LlmProvider; reportQueue?: ReportQueue; researchQueue?: ResearchQueue } = {}): Promise<FastifyInstance> {
@@ -45,6 +46,7 @@ export async function buildApp(opts: { logger?: boolean; adsGateway?: GoogleAdsG
   await registerAdGrantsRoutes(app, opts.adsGateway);
   await registerContentRoutes(app, opts.llmProvider);
   await registerReportRoutes(app, opts.reportQueue ?? bullReportQueue());
-  await registerResearchAuditRoutes(app, opts.researchQueue);
+  // Research audits stay off in production until RESEARCH_AUDIT_ENABLED=true (docs/runbooks/research-audit.md).
+  await registerResearchAuditRoutes(app, opts.researchQueue ?? (process.env.RESEARCH_AUDIT_ENABLED === "true" ? bullResearchQueue() : undefined));
   return app;
 }

@@ -73,15 +73,17 @@ describe("research audit API", () => {
 
   it("hides scores and findings until the audit is released", async () => {
     await scopedDb(A.orgId).researchAudits.addFindings(auditId, [{ pillar: "seo", layer: "rules", checkId: "title", result: "fail", points: 10, fix: "Add a title" }]);
-    await scopedDb(A.orgId).researchAudits.update(auditId, { status: "in_review", seoScore: 80, overallScore: 65, summary: { headline: "secret draft" } });
+    await scopedDb(A.orgId).researchAudits.update(auditId, { status: "in_review", platform: "wix", seoScore: 80, overallScore: 65, summary: { headline: "secret draft" } });
     const one = (await call(A.cookie, "GET", `/research-audits/${auditId}`)).json();
     expect(one.audit.status).toBe("in_review");
     expect(one.audit.overallScore).toBeNull();
     expect(one.audit.seoScore).toBeNull();
+    expect(one.audit.platform).toBeNull();
     expect(one.audit.summary).toBeNull();
     expect(one.findings).toBeNull();
     const list = (await call(A.cookie, "GET", "/research-audits")).json();
     expect(list.audits[0].overallScore).toBeNull();
+    expect(list.audits[0].platform).toBeNull();
     expect(JSON.stringify(list)).not.toContain("secret draft");
   });
 
@@ -90,6 +92,7 @@ describe("research audit API", () => {
     const one = (await call(A.cookie, "GET", `/research-audits/${auditId}`)).json();
     expect(one.audit.status).toBe("released");
     expect(one.audit.overallScore).toBe(65);
+    expect(one.audit.platform).toBe("wix");
     expect(one.audit.summary).toEqual({ headline: "ok" });
     expect(one.findings).toHaveLength(1);
     expect(one.findings[0].fix).toBe("Add a title");
@@ -142,5 +145,10 @@ describe("presentAudit", () => {
     expect(shown.status).toBe("failed");
     expect(shown.seoScore).toBeNull();
     expect(shown.summary).toBeNull();
+    expect(shown.platform).toBeNull();
+    expect(presentAudit({ ...base, status: "in_review", releasedAt: null } as never).platform).toBeNull();
+  });
+  it("shows the platform once released", () => {
+    expect(presentAudit(base as never).platform).toBe("wix");
   });
 });

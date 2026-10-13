@@ -89,6 +89,15 @@ describe("scoreResearchAudit", () => {
     expect(() => scoreResearchAudit([f("seo", "rules", "pass", Number.POSITIVE_INFINITY)])).toThrow(/points/);
   });
 
+  it("treats a whitespace-only source as no source", () => {
+    const r = scoreResearchAudit([
+      { pillar: "seo", layer: "reference", checkId: "x", result: "pass", points: 10, sourceUrl: "   " },
+      f("seo", "rules", "fail", 10),
+    ]);
+    expect(r.pillars.seo.dropped).toBe(1);
+    expect(r.pillars.seo.layers.reference.score).toBeNull();
+  });
+
   it("returns nulls for no findings at all", () => {
     const r = scoreResearchAudit([]);
     expect(r.overall).toBeNull();

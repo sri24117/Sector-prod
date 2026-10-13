@@ -290,7 +290,7 @@ export const researchFindings = pgTable("research_findings", {
   check("research_findings_layer_ck", sql`${t.layer} in ('rules','reference','peer')`),
   check("research_findings_result_ck", sql`${t.result} in ('pass','fail','could_not_check')`),
   // Honesty rule: a benchmark comparison must cite a source.
-  check("research_findings_source_ck", sql`${t.layer} = 'rules' or ${t.sourceUrl} is not null`),
+  check("research_findings_source_ck", sql`${t.layer} = 'rules' or (${t.sourceUrl} is not null and length(trim(${t.sourceUrl})) > 0)`),
 ]);
 
 // The owner's overrides. The original AI output is never overwritten; every change is recorded here.

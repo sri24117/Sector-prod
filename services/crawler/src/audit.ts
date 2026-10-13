@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { request, type Dispatcher } from "undici";
+import { detectPlatform, type Platform } from "./platform.js";
 import { checkPublicUrl, guardedAgent, readCapped } from "@sector/shared/net-guard";
 
 // Every request goes through the guarded agent (SSRF check on the IP actually
@@ -31,6 +32,8 @@ export interface AuditResult {
   score: number;
   runAt: string;
   checks: CheckResult[];
+  platform: Platform;
+  htmlWords: number;
 }
 
 const AI_CRAWLER_UA_TOKENS = [
@@ -233,6 +236,10 @@ export async function runAudit(startUrl: string, opts: RunAuditOptions = {}): Pr
   }
   const { text: html } = await readCapped(res.body, MAX_HTML_BYTES);
   const $ = cheerio.load(html);
+  const visible = cheerio.load(html);
+  visible("script, style, noscript").remove();
+  const htmlWords = visible("body").text().split(/\s+/).filter(Boolean).length;
+  const platform = detectPlatform(html, res.headers);
   const lastModified = res.headers["last-modified"] as string | undefined;
 
   const robots = await checkRobotsTxt(url, net);
@@ -250,5 +257,5 @@ export async function runAudit(startUrl: string, opts: RunAuditOptions = {}): Pr
 
   const score = checks.reduce((sum, c) => sum + (c.passed ? c.weight : 0), 0);
 
-  return { url, score, runAt: new Date().toISOString(), checks };
+  return { url, score, runAt: new Date().toISOString(), checks, platform, htmlWords };
 }
