@@ -158,6 +158,17 @@ describe("content and brand", () => {
     const broken = report({ social: [{ platform: "Facebook", url: "https://facebook.com/x", state: "broken" }] });
     expect(get(deriveRulesFindings({ report: broken, audit: audit() }), "brand.social_links").result).toBe("fail");
   });
+  it("accepts underscores as well as hyphens in key-page paths", () => {
+    const home = page({ internalLinks: [`${SITE}about_us`, `${SITE}Our_Work`, `${SITE}support_us`] });
+    const fs = deriveRulesFindings({ report: report({ pages: [home, page({ url: `${SITE}Contact_Us`, title: "Contact" })] }), audit: audit() });
+    for (const id of ["brand.contact_page", "brand.about_page", "brand.programs_page", "brand.donate_path"]) expect(get(fs, id).result).toBe("pass");
+  });
+  it("does not match paths that merely start with a key word", () => {
+    const home = page({ internalLinks: [] });
+    const fs = deriveRulesFindings({ report: report({ pages: [home, page({ url: `${SITE}programming-blog` }), page({ url: `${SITE}contactless` })] }), audit: audit() });
+    expect(get(fs, "brand.programs_page").result).toBe("fail");
+    expect(get(fs, "brand.contact_page").result).toBe("fail");
+  });
   it("measures content depth by the median page, so one long page cannot hide thin ones", () => {
     const pages = [page({ words: 5000 }), page({ url: `${SITE}a`, words: 50 }), page({ url: `${SITE}b`, words: 60 })];
     expect(get(deriveRulesFindings({ report: report({ pages }), audit: audit() }), "brand.content_depth").result).toBe("fail");

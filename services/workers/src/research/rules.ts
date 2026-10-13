@@ -29,10 +29,10 @@ const AIO: Record<string, { points: number; fix: string; effort: string }> = {
 };
 const ORG_TYPES = ["Organization", "NGO", "NonprofitOrganization"];
 const KEY = {
-  about: /\/(about|about-us|who-we-are|our-story)(\/|$)/,
-  donate: /\/(donate|give|giving|support-us|contribute)(\/|$)/,
-  programs: /\/(programs?|programmes?|our-work|projects?|what-we-do)(\/|$)/,
-  contact: /\/contact(-us)?(\/|$)/,
+  about: /\/(about|about[-_]us|who[-_]we[-_]are|our[-_]story)(\/|$)/,
+  donate: /\/(donate|give|giving|support[-_]us|contribute)(\/|$)/,
+  programs: /\/(programs?|programmes?|our[-_]work|projects?|what[-_]we[-_]do)(\/|$)/,
+  contact: /\/contact([-_]us)?(\/|$)/,
 };
 
 export function deriveRulesFindings({ report, audit }: RulesInput): RuleFinding[] {
