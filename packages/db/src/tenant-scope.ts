@@ -196,6 +196,43 @@ export function scopedDb(organizationId: string) {
       update: (reportId: string, set: Partial<Pick<typeof schema.reports.$inferInsert, "status" | "error" | "summary" | "html" | "pdf" | "finishedAt">>) =>
         rawDb.update(schema.reports).set(set).where(and(eq(schema.reports.id, reportId), eq(schema.reports.organizationId, organizationId))).returning({ id: schema.reports.id }).then((r) => r[0] ?? null),
     },
+    // Research audit (specs/2026-10-13-research-audit-design.md). `update` cannot set releasedAt: only
+    // apps/api/src/lib/research-release.ts does, so an audit cannot become visible by accident.
+    researchAudits: {
+      create: (data: { siteUrl: string; platform?: string | null; createdBy: string }) =>
+        rawDb.insert(schema.researchAudits).values({ ...data, organizationId }).returning().then((r) => r[0]!),
+      findById: (auditId: string) =>
+        rawDb.select().from(schema.researchAudits).where(and(eq(schema.researchAudits.id, auditId), eq(schema.researchAudits.organizationId, organizationId))).then((r) => r[0] ?? null),
+      list: () =>
+        rawDb.select().from(schema.researchAudits).where(eq(schema.researchAudits.organizationId, organizationId)).orderBy(desc(schema.researchAudits.createdAt)).limit(50),
+      activeCount: () => rawDb.select({ id: schema.researchAudits.id }).from(schema.researchAudits)
+        .where(and(eq(schema.researchAudits.organizationId, organizationId), inArray(schema.researchAudits.status, ["queued", "running"]), gt(schema.researchAudits.createdAt, new Date(Date.now() - 60 * 60_000)))).then((r) => r.length),
+      countSince: (since: Date) => rawDb.select({ id: schema.researchAudits.id }).from(schema.researchAudits)
+        .where(and(eq(schema.researchAudits.organizationId, organizationId), gt(schema.researchAudits.createdAt, since))).then((r) => r.length),
+      update: (auditId: string, set: Partial<Pick<typeof schema.researchAudits.$inferInsert, "status" | "error" | "platform" | "seoScore" | "aioScore" | "uiuxScore" | "brandScore" | "overallScore" | "layerWeights" | "pillarWeights" | "summary">>) => {
+        const { status, error, platform, seoScore, aioScore, uiuxScore, brandScore, overallScore, layerWeights, pillarWeights, summary } = set;
+        const allowed = Object.fromEntries(Object.entries({ status, error, platform, seoScore, aioScore, uiuxScore, brandScore, overallScore, layerWeights, pillarWeights, summary }).filter(([, v]) => v !== undefined));
+        return rawDb.update(schema.researchAudits).set(allowed).where(and(eq(schema.researchAudits.id, auditId), eq(schema.researchAudits.organizationId, organizationId))).returning({ id: schema.researchAudits.id }).then((r) => r[0] ?? null);
+      },
+      addFindings: async (auditId: string, rows: Omit<typeof schema.researchFindings.$inferInsert, "id" | "auditId" | "organizationId">[]) => {
+        const own = await rawDb.select({ id: schema.researchAudits.id }).from(schema.researchAudits)
+          .where(and(eq(schema.researchAudits.id, auditId), eq(schema.researchAudits.organizationId, organizationId)));
+        if (!own[0]) throw new Error("audit_not_found");
+        if (rows.length === 0) return 0;
+        await rawDb.insert(schema.researchFindings).values(rows.map((r) => ({ ...r, auditId, organizationId })));
+        return rows.length;
+      },
+      findings: (auditId: string) => rawDb.select().from(schema.researchFindings)
+        .where(and(eq(schema.researchFindings.auditId, auditId), eq(schema.researchFindings.organizationId, organizationId))),
+      // Only a released audit's findings ever reach the organization.
+      releasedFindings: async (auditId: string) => {
+        const released = await rawDb.select({ id: schema.researchAudits.id }).from(schema.researchAudits)
+          .where(and(eq(schema.researchAudits.id, auditId), eq(schema.researchAudits.organizationId, organizationId), eq(schema.researchAudits.status, "released")));
+        if (!released[0]) return null;
+        return rawDb.select().from(schema.researchFindings)
+          .where(and(eq(schema.researchFindings.auditId, auditId), eq(schema.researchFindings.organizationId, organizationId)));
+      },
+    },
   };
 }
 
