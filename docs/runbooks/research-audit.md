@@ -13,16 +13,19 @@ The research audit checks an organization's own website against a fixed set of r
 
 ## 2. Turn it on
 
-1. Set `RESEARCH_AUDIT_ENABLED=true` in `/opt/sector/.env`. Edit the file without printing it (never `cat` it).
-2. Build and restart: the worker needs no flag but must be running the new image.
-   `dc build worker api` then `dc up -d worker api`
-3. Apply migration 0005: `dc exec api npm run migrate`
-4. Pick up the flag: `dc up -d --no-deps api`
+Do the steps in this order, so the api never runs with research audits enabled before the database is ready.
+
+1. Build the new images: `dc build worker api`
+2. Start them with the feature still off (`RESEARCH_AUDIT_ENABLED` is `false` or unset in `/opt/sector/.env`): `dc up -d worker api`
+3. Apply the database migrations: `dc exec api npm run migrate`. This applies migrations 0004 and 0005, which are additive and safe on a table that has never held data.
+4. Only now set `RESEARCH_AUDIT_ENABLED=true` in `/opt/sector/.env` (edit it without printing it, never `cat` it), then run `dc up -d --no-deps api`.
+
+The worker needs no flag.
 
 ## 3. Make an organization eligible
 
 - Put it on the pilot plan: `dc exec api npm run set-plan -- <orgId> pilot`
-- The organization must also have verified its website.
+- The organization must also have verified its website. If it has not, the organization gets the message "Verify that you own your website first." with error code `site_not_verified` when it requests an audit.
 
 ## 4. Review
 
@@ -39,11 +42,11 @@ Only after this does the organization see scores and findings.
 
 ## 6. Turn it off
 
-Set `RESEARCH_AUDIT_ENABLED=false` in `/opt/sector/.env`, then `dc up -d --no-deps api`. Audits already created stay in the database, and jobs already queued still run.
+Set `RESEARCH_AUDIT_ENABLED=false` in `/opt/sector/.env`, then `dc up -d --no-deps api`. Audits already created stay in the database. Jobs already queued will still run, because the worker does not check the flag; turning the flag off only stops new audits being created.
 
 ## 7. Resource note
 
-One audit takes several minutes of Chromium on the shared 2 vCPU / 7.8 GB host, and it queues behind any full report. The worker container is capped at 1.5 GB.
+Research audits and full reports share one queue that runs one Chromium job at a time (the report worker has concurrency 1 and a 10-minute lock). A research audit therefore waits behind any full report, and a full report waits behind a research audit. One audit takes several minutes; a real test run on a 20-page NGO site took about 3 minutes. The worker container is capped at 2 GB on the shared 2 vCPU / 7.8 GB host.
 
 ## 8. Not included yet
 
