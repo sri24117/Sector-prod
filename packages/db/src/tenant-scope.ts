@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { rawDb, schema } from "./client.js";
 
@@ -213,7 +213,7 @@ export function scopedDb(organizationId: string) {
         if ((set.status as string | undefined) === "released") throw new Error("release_forbidden"); // release goes through research-release.ts only
         const { status, error, platform, seoScore, aioScore, uiuxScore, brandScore, overallScore, layerWeights, pillarWeights, summary } = set;
         const allowed = Object.fromEntries(Object.entries({ status, error, platform, seoScore, aioScore, uiuxScore, brandScore, overallScore, layerWeights, pillarWeights, summary }).filter(([, v]) => v !== undefined));
-        return rawDb.update(schema.researchAudits).set(allowed).where(and(eq(schema.researchAudits.id, auditId), eq(schema.researchAudits.organizationId, organizationId))).returning({ id: schema.researchAudits.id }).then((r) => r[0] ?? null);
+        return rawDb.update(schema.researchAudits).set(allowed).where(and(eq(schema.researchAudits.id, auditId), eq(schema.researchAudits.organizationId, organizationId), ne(schema.researchAudits.status, "released"))).returning({ id: schema.researchAudits.id }).then((r) => r[0] ?? null);
       },
       addFindings: async (auditId: string, rows: Omit<typeof schema.researchFindings.$inferInsert, "id" | "auditId" | "organizationId">[]) => {
         const own = await rawDb.select({ id: schema.researchAudits.id }).from(schema.researchAudits)

@@ -63,7 +63,7 @@ export function scoreResearchAudit(findings: ScoreFinding[], weights: Weights = 
     let dropped = 0;
     for (const x of findings) {
       if (x.pillar !== pillar) continue;
-      if (x.layer !== "rules" && !x.sourceUrl) { dropped++; continue; }
+      if (x.layer !== "rules" && !x.sourceUrl?.trim()) { dropped++; continue; }
       if (x.result === "could_not_check") { couldNotCheck++; continue; }
       layers[x.layer].available += x.points;
       if (x.result === "pass") layers[x.layer].earned += x.points;
