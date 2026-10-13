@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, isNull } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { rawDb, schema } from "./client.js";
 
@@ -209,7 +209,8 @@ export function scopedDb(organizationId: string) {
         .where(and(eq(schema.researchAudits.organizationId, organizationId), inArray(schema.researchAudits.status, ["queued", "running"]), gt(schema.researchAudits.createdAt, new Date(Date.now() - 60 * 60_000)))).then((r) => r.length),
       countSince: (since: Date) => rawDb.select({ id: schema.researchAudits.id }).from(schema.researchAudits)
         .where(and(eq(schema.researchAudits.organizationId, organizationId), gt(schema.researchAudits.createdAt, since))).then((r) => r.length),
-      update: (auditId: string, set: Partial<Pick<typeof schema.researchAudits.$inferInsert, "status" | "error" | "platform" | "seoScore" | "aioScore" | "uiuxScore" | "brandScore" | "overallScore" | "layerWeights" | "pillarWeights" | "summary">>) => {
+      update: (auditId: string, set: Partial<Pick<typeof schema.researchAudits.$inferInsert, "error" | "platform" | "seoScore" | "aioScore" | "uiuxScore" | "brandScore" | "overallScore" | "layerWeights" | "pillarWeights" | "summary"> & { status: "queued" | "running" | "in_review" | "failed" }>) => {
+        if ((set.status as string | undefined) === "released") throw new Error("release_forbidden"); // release goes through research-release.ts only
         const { status, error, platform, seoScore, aioScore, uiuxScore, brandScore, overallScore, layerWeights, pillarWeights, summary } = set;
         const allowed = Object.fromEntries(Object.entries({ status, error, platform, seoScore, aioScore, uiuxScore, brandScore, overallScore, layerWeights, pillarWeights, summary }).filter(([, v]) => v !== undefined));
         return rawDb.update(schema.researchAudits).set(allowed).where(and(eq(schema.researchAudits.id, auditId), eq(schema.researchAudits.organizationId, organizationId))).returning({ id: schema.researchAudits.id }).then((r) => r[0] ?? null);
@@ -227,7 +228,7 @@ export function scopedDb(organizationId: string) {
       // Only a released audit's findings ever reach the organization.
       releasedFindings: async (auditId: string) => {
         const released = await rawDb.select({ id: schema.researchAudits.id }).from(schema.researchAudits)
-          .where(and(eq(schema.researchAudits.id, auditId), eq(schema.researchAudits.organizationId, organizationId), eq(schema.researchAudits.status, "released")));
+          .where(and(eq(schema.researchAudits.id, auditId), eq(schema.researchAudits.organizationId, organizationId), eq(schema.researchAudits.status, "released"), isNotNull(schema.researchAudits.releasedAt)));
         if (!released[0]) return null;
         return rawDb.select().from(schema.researchFindings)
           .where(and(eq(schema.researchFindings.auditId, auditId), eq(schema.researchFindings.organizationId, organizationId)));

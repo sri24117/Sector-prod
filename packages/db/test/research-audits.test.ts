@@ -59,6 +59,25 @@ describe("researchAudits repository", () => {
     expect((await db.findById(b.id))?.releasedAt).toBeNull();
   });
 
+  it("update refuses status released and leaves the audit unchanged", async () => {
+    const db = scopedDb(orgA).researchAudits;
+    const c = await db.create({ siteUrl: "https://a.example.org/", createdBy: "u1" });
+    await db.addFindings(c.id, [{ pillar: "seo", layer: "rules", checkId: "c", result: "pass", points: 1 }]);
+    expect(() => db.update(c.id, { status: "released" } as never)).toThrow("release_forbidden");
+    expect((await db.findById(c.id))?.status).toBe("queued");
+    expect(await db.releasedFindings(c.id)).toBeNull();
+  });
+
+  it("releasedFindings requires released_at, not just status released", async () => {
+    const db = scopedDb(orgA).researchAudits;
+    const d = await db.create({ siteUrl: "https://a.example.org/", createdBy: "u1" });
+    await db.addFindings(d.id, [{ pillar: "seo", layer: "rules", checkId: "c", result: "pass", points: 1 }]);
+    await rawDb.update(schema.researchAudits).set({ status: "released" }).where(eq(schema.researchAudits.id, d.id));
+    expect(await db.releasedFindings(d.id)).toBeNull();
+    await rawDb.update(schema.researchAudits).set({ releasedAt: new Date() }).where(eq(schema.researchAudits.id, d.id));
+    expect((await db.releasedFindings(d.id))?.length).toBe(1);
+  });
+
   it("counts active audits and audits since a time", async () => {
     const db = scopedDb(orgB).researchAudits;
     expect(await db.activeCount()).toBe(0);
