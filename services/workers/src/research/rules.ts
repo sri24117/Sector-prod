@@ -51,7 +51,7 @@ export function deriveRulesFindings({ report, audit }: RulesInput): RuleFinding[
        : add(pillar, checkId, points, "could_not_check", "The speed and accessibility test could not finish on your homepage.", fix, effort);
 
   // ---- SEO ----
-  add("seo", "seo.https", 10, report.siteUrl.startsWith("https://") ? "pass" : "fail", `Your address is ${report.siteUrl}`, "Move the whole site to https. Your hosting provider can switch it on and redirect old addresses.", "About 30 minutes with your hosting provider");
+  add("seo", "seo.https", 10, home.url.startsWith("https://") ? "pass" : "fail", `Your site ends up at ${home.url}`, "Move the whole site to https. Your hosting provider can switch it on and redirect old addresses.", "About 30 minutes with your hosting provider");
   onPages("seo", "seo.titles", 15, pages.filter((p) => !p.title.trim()), "No title on", "Give every page a short, specific title.", "About 5 minutes per page");
   const byTitle = new Map<string, string[]>();
   for (const p of pages) if (p.title.trim()) byTitle.set(p.title.trim(), [...(byTitle.get(p.title.trim()) ?? []), p.url]);

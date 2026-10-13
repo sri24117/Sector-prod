@@ -5,6 +5,7 @@ import { runAudit } from "@sector/crawler";
 import { runAllComplianceChecks, unavailableGateway } from "@sector/ad-grants";
 import { runReportJob } from "./report/run.js";
 import { runResearchAuditJob } from "./research/run.js";
+import { dispatchReportQueueJob } from "./dispatch.js";
 
 // Concurrency is env-controlled per docs/decisions/ADR-0003-hosting-topology.md — do not hardcode.
 const connection = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379", { maxRetriesPerRequest: null });
@@ -23,10 +24,8 @@ const adGrantsWorker = new Worker("ad-grants-compliance", async () => {
 }, { connection, concurrency: 1 });
 
 // Full reports and research audits (ADR-0007): Chromium-heavy, so strictly one at a time with a long lock.
-const reportWorker = new Worker("report", async (job: Job<{ reportId?: string; auditId?: string; organizationId: string }>) => {
-  if (job.name === "research-audit") return runResearchAuditJob({ auditId: job.data.auditId!, organizationId: job.data.organizationId });
-  return runReportJob({ reportId: job.data.reportId!, organizationId: job.data.organizationId });
-}, { connection, concurrency: 1, lockDuration: 10 * 60_000 });
+const reportWorker = new Worker("report", async (job: Job<{ reportId?: string; auditId?: string; organizationId: string }>) =>
+  dispatchReportQueueJob(job, { report: runReportJob, research: (j) => runResearchAuditJob(j) }), { connection, concurrency: 1, lockDuration: 10 * 60_000 });
 
 for (const w of [auditWorker, adGrantsWorker, reportWorker]) w.on("failed", (job, err) => console.error(`Job ${job?.id} (${w.name}) failed:`, err.message));
 console.log(`Worker started. concurrency=${concurrency}. Queues: audit, ad-grants-compliance (daily 03:00), report (full reports and research audits, 1 at a time).`);

@@ -37,6 +37,20 @@ describe("deriveRulesFindings: a healthy site", () => {
   });
 });
 
+describe("SEO https", () => {
+  it("passes an http profile URL that redirects to https (judged on the final homepage URL)", () => {
+    const fs = deriveRulesFindings({ report: report({ siteUrl: "http://ngo.example.org/" }), audit: audit() });
+    expect(get(fs, "seo.https").result).toBe("pass");
+  });
+  it("fails an https profile URL whose homepage ends on http", () => {
+    const home = "http://ngo.example.org/";
+    const fs = deriveRulesFindings({ report: report({ siteUrl: SITE, pages: [page({ url: home })], lighthouse: [{ url: home, scores: { performance: 90, seo: 95, accessibility: 92, bestPractices: 100 }, metrics: { lcpMs: 1800, cls: 0.02, tbtMs: 100 }, failed: [] }] }), audit: audit() });
+    const f = get(fs, "seo.https");
+    expect(f.result).toBe("fail");
+    expect(f.evidence).toContain(home);
+  });
+});
+
 describe("SEO", () => {
   it("fails a page with no title and names the page", () => {
     const f = get(deriveRulesFindings({ report: report({ pages: [page(), page({ url: `${SITE}x`, title: " " })] }), audit: audit() }), "seo.titles");
@@ -54,7 +68,7 @@ describe("SEO", () => {
     expect(get(fs, "seo.language").result).toBe("fail");
   });
   it("fails http sites, a missing homepage canonical and broken links", () => {
-    const fs = deriveRulesFindings({ report: report({ siteUrl: "http://ngo.example.org/", pages: [page({ canonical: "" })], brokenLinks: [{ url: `${SITE}gone`, status: 404, foundOn: SITE }] }), audit: audit() });
+    const fs = deriveRulesFindings({ report: report({ pages: [page({ url: "http://ngo.example.org/", canonical: "" })], lighthouse: [], brokenLinks: [{ url: `${SITE}gone`, status: 404, foundOn: SITE }] }), audit: audit() });
     expect(get(fs, "seo.https").result).toBe("fail");
     expect(get(fs, "seo.canonical").result).toBe("fail");
     expect(get(fs, "seo.broken_links").result).toBe("fail");
