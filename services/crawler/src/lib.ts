@@ -4,3 +4,4 @@
 // never import.
 
 export * from "./audit.js";
+export * from "./platform.js";
