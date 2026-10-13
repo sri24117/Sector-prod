@@ -18,7 +18,8 @@
     "migrate": "tsx node_modules/@sector/db/src/migrate.ts",
     "confirm-fcra": "tsx node_modules/@sector/db/src/confirm-fcra.ts",
     "set-plan": "tsx src/scripts/set-plan.ts",
-    "research-release": "tsx src/scripts/research-release.ts"
+    "research-release": "tsx src/scripts/research-release.ts",
+    "research-show": "tsx src/scripts/research-show.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
