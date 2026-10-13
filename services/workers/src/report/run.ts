@@ -1,16 +1,15 @@
 import { scopedDb } from "@sector/db";
 import { startGuardedProxy } from "./proxy.js";
-import { crawlSite, launchBrowser, runLighthouse, renderPdf, checkSocial } from "./collect.js";
-import { buildActions, overallScore, socialProfilesFrom, bucketOf, homeLighthouse, coverage } from "./analysis.js";
+import { launchBrowser, renderPdf } from "./collect.js";
+import { gatherSiteData } from "./gather.js";
+import { buildActions, overallScore, bucketOf, homeLighthouse, coverage } from "./analysis.js";
 import { renderReportHtml } from "./render.js";
-import { SCORE_MODEL, type LighthouseResult, type ReportData } from "./types.js";
+import { SCORE_MODEL, type ReportData } from "./types.js";
 
 // One full report, start to finish (spec 2026-10-04-full-report-design.md, ADR-0007).
 // Runs on the "report" queue with concurrency 1. Never throws: failures are stored on the row.
 
 const REPORT_TIMEOUT_MS = 8 * 60_000;
-const SECOND_LIGHTHOUSE_BEFORE_MS = 5 * 60_000; // safety net so a very slow site still finishes inside the timeout
-const KEY_PAGE = /\/(about|about-us|who-we-are|donate|programs?|programmes?|our-work|projects?|contact)(\/|$)/i;
 
 export async function buildReport(siteUrl: string, organizationName: string, signal: AbortSignal, log: (stage: string) => void = () => undefined): Promise<{ data: ReportData; html: string; pdf: Buffer }> {
   const started = Date.now();
@@ -20,21 +19,7 @@ export async function buildReport(siteUrl: string, organizationName: string, sig
   const stop = () => { void browser.close().catch(() => undefined); void proxy.close().catch(() => undefined); };
   signal.addEventListener("abort", stop, { once: true });
   try {
-    log("crawl");
-    const crawl = await crawlSite(browser, siteUrl, signal);
-    const notes = [...crawl.notes];
-    const home = crawl.pages[0]!;
-    const key = crawl.pages.slice(1).find((p) => KEY_PAGE.test(new URL(p.url).pathname)) ?? crawl.pages[1];
-    const lighthouse: LighthouseResult[] = [];
-    for (const target of [home, key].filter((p): p is NonNullable<typeof p> => !!p)) {
-      if (signal.aborted) break;
-      if (target !== home && Date.now() - started > SECOND_LIGHTHOUSE_BEFORE_MS) break; // homepage test only on slow sites
-      log(`lighthouse ${target.url}`);
-      try { lighthouse.push(await runLighthouse(target.url, proxy, signal)); }
-      catch { notes.push(`The speed and accessibility test could not finish for ${target.url}.`); }
-    }
-    log("social");
-    const social = await checkSocial(socialProfilesFrom(crawl.pages.flatMap((p) => p.socialLinks)));
+    const { crawl, lighthouse, social, notes } = await gatherSiteData(browser, proxy, siteUrl, signal, log, started);
     const data: ReportData = {
       siteUrl, organizationName, generatedAt: new Date().toISOString(),
       pages: crawl.pages, brokenLinks: crawl.brokenLinks, unreachable: crawl.unreachable, lighthouse, axe: crawl.axe, screenshots: crawl.screenshots, social, notes,
