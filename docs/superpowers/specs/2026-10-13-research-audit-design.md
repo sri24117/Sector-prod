@@ -50,7 +50,7 @@ A **synthesis** step combines the four into the overall score, the brand-directi
 
 ## Data model (migration 0004)
 
-- `research_audits`: `id`, `org_id`, `site_url`, `status` (`queued | running | in_review | released | failed`), `seo_score`, `aio_score`, `uiux_score`, `brand_score`, `overall_score`, `layer_weights` (jsonb), `pillar_weights` (jsonb), `summary` (jsonb), `created_at`, `released_at`.
+- `research_audits`: `id`, `org_id`, `site_url`, `platform`, `status` (`queued | running | in_review | released | failed`), `seo_score`, `aio_score`, `uiux_score`, `brand_score`, `overall_score`, `layer_weights` (jsonb), `pillar_weights` (jsonb), `summary` (jsonb), `created_at`, `released_at`.
 - `research_findings`: `id`, `audit_id`, `pillar`, `layer` (`rules | reference | peer`), `check_id`, `result` (`pass | fail | could_not_check`), `evidence`, `source_id` (nullable, required for reference and peer), `fix`, `effort`, `points`.
 - `reference_sources`: `id`, `name`, `org_type` (`ngo | foundation | csr`), `cause`, `region`, `url`, `retrieved_on`, `strengths` (jsonb, per pillar). Written only by the owner through an import script; the AI reads it and never writes it.
 - `review_edits`: `id`, `audit_id`, `target` (finding or score), `old_value`, `new_value`, `note`, `created_at`. The original AI output is never overwritten.
@@ -68,11 +68,21 @@ A **synthesis** step combines the four into the overall score, the brand-directi
 
 A new tab beside the full report: overall score, four pillar cards, the brand-direction summary, and per pillar "what's working", "what to fix first" and "how you compare" with cited peers and sources. PDF export through the same pipeline as the full report. "Could not check" items are shown. No before/after comparison in v1; every run is a snapshot.
 
+## Non-WordPress sites
+
+Most organizations will not be on WordPress. The audit reads the public website and works on any platform. WordPress is needed only for one verification method and for future automatic fixes.
+
+- **Verification:** the meta tag and DNS TXT methods work for any site. A site builder with no code access uses DNS.
+- **Platform detection:** the crawl detects the platform (`wordpress | wix | squarespace | webflow | shopify | custom | unknown`) from the page source and stores it in `research_audits.platform`. It is shown on the report. Detection is a hint, not a gate: `unknown` still gets a full audit.
+- **JavaScript-rendered sites:** if the plain HTML has little or no visible text or links, the crawl re-reads the page in the headless browser the worker already uses for reports. If the page still cannot be read, the affected checks are `could_not_check`, never a failed score.
+- **Fixes:** every fix is written as copy-paste text (title, description, schema snippet, alt text) plus steps for the detected platform, for example Wix: Marketing & SEO, SEO Tools. Fixes are applied by hand by the owner or the organization's web person. Automatic fixing exists only for a connected WordPress site, through the connector, and is out of scope for v1.
+- **Connectors for other platforms** (Wix, Webflow and so on) are added behind the connector interface only when pilot organizations need them. The platform split of the first pilot organizations decides which comes first.
+
 ## Build order
 
 1. Migration 0004 and the plan and verification gate.
 2. Scoring core: a pure function from findings, layer weights and pillar weights to scores, with all honesty rules.
-3. Rules layer for all four pillars (SEO and AIO first, then UI/UX, then content and brand).
+3. Rules layer for all four pillars (SEO and AIO first, then UI/UX, then content and brand), including platform detection and the JS-rendering fallback.
 4. Reference library: table, import script, and about 10 sources filled in first.
 5. Peer research: worker job using the SSRF-guarded fetcher, LLM extraction of strengths, 30-day cache.
 6. Pillar skills and synthesis with strict JSON-schema output validation.
@@ -83,6 +93,7 @@ A new tab beside the full report: overall score, four pillar cards, the brand-di
 - Scoring function: unit tests including all checks skipped, an empty library, and weights that do not sum to 100.
 - Rules checks: fixture HTML pages, one good and one bad per check.
 - LLM steps: recorded responses plus schema validation; one manual end-to-end run on a real NGO site before release.
+- Platform detection and the JS fallback: fixture pages for WordPress, Wix, a script-only page and an unknown page.
 - API: a `free` org gets 403; an unreleased audit is not visible to the organization; an unverified site is refused.
 
 ## Risks
