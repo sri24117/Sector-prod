@@ -50,7 +50,7 @@ A **synthesis** step combines the four into the overall score, the brand-directi
 
 ## Data model (migration 0004)
 
-- `research_audits`: `id`, `org_id`, `site_url`, `platform`, `status` (`queued | running | in_review | released | failed`), `seo_score`, `aio_score`, `uiux_score`, `brand_score`, `overall_score`, `layer_weights` (jsonb), `pillar_weights` (jsonb), `summary` (jsonb), `created_at`, `released_at`.
+- `research_audits`: `id`, `organization_id`, `site_url`, `platform`, `status` (`queued | running | in_review | released | failed`), `error`, `seo_score`, `aio_score`, `uiux_score`, `brand_score`, `overall_score`, `layer_weights` (jsonb), `pillar_weights` (jsonb), `summary` (jsonb), `created_by`, `created_at`, `released_at`.
 - `research_findings`: `id`, `audit_id`, `organization_id`, `pillar`, `layer` (`rules | reference | peer`), `check_id`, `result` (`pass | fail | could_not_check`), `evidence`, `source_id` (optional link to a library row, reference layer), `source_url` and `source_name` (required for reference and peer), `fix`, `effort`, `points`. A database constraint rejects reference and peer rows with no `source_url`.
 - `reference_sources`: `id`, `name`, `org_type` (`ngo | foundation | csr`), `cause`, `region`, `url`, `retrieved_on`, `strengths` (jsonb, per pillar). Written only by the owner through an import script; the AI reads it and never writes it.
 - `review_edits`: `id`, `audit_id`, `organization_id`, `target` (finding or score), `old_value`, `new_value`, `note`, `created_at`. The original AI output is never overwritten.
