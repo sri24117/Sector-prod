@@ -311,6 +311,23 @@ select.input { appearance: auto; }
   .btn-quiet { border-color: var(--line); border-width: 1px; }
 }
 
+/* ---------- Legal pages (/privacy, /terms) and footer ---------- */
+.legal > * + * { margin-top: var(--s-4); }
+.legal > .section-heading { margin-top: var(--s-6); }
+.legal > .legal-subheading { margin-top: var(--s-5); font-size: 16px; font-weight: 600; }
+.legal ul { padding-left: var(--s-5); }
+.legal li + li { margin-top: var(--s-2); }
+/* Open drafting gaps stay visible: ochre rule plus the words themselves, never colour alone. */
+.legal-gap { background: none; color: var(--ink); border-bottom: 2px solid var(--ochre); font-weight: 600; }
+
+.site-footer {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: var(--s-5) var(--s-5) var(--s-6);
+  border-top: 1px solid var(--line);
+}
+.site-footer nav { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); }
+
 /* ---------- Guided journey (docs/superpowers/specs/2026-10-04-guided-journey-design.md) ---------- */
 .card {
   background: var(--surface);

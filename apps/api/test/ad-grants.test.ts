@@ -9,7 +9,7 @@ let app: FastifyInstance;
 const gateway: GoogleAdsGateway = { async fetchSnapshot() { return { accountCreatedAt: "2023-01-01", ctrLast30d: 0.031, ctrPrev30d: 0.09, conversionActions: [{ name: "D", category: "PURCHASE", conversionsLast30d: 4 }], campaigns: [{ name: "C", biddingStrategy: "TARGET_CPA", adGroupCount: 2 }], keywords: [], uniqueSitelinkCount: 3 }; } };
 const call = (cookie: string, method: "GET" | "POST", url: string, payload?: unknown) => app.inject({ method, url, headers: { cookie }, payload: payload as never });
 async function signup(name: string, email: string, fcraSelfDeclared: boolean) {
-  const r = await app.inject({ method: "POST", url: "/auth/signup", payload: { organizationName: name, name: "O", email, password: "long-enough-password", fcraSelfDeclared } });
+  const r = await app.inject({ method: "POST", url: "/auth/signup", payload: { acceptTerms: true, organizationName: name, name: "O", email, password: "long-enough-password", fcraSelfDeclared } });
   const c = r.cookies.find((x) => x.name === "sector_session")!;
   return { cookie: `${c.name}=${c.value}`, orgId: r.json().organizationId as string, userId: r.json().userId as string };
 }

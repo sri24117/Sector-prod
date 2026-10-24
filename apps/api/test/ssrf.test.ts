@@ -14,7 +14,7 @@ const prevAllow = process.env.ALLOW_PRIVATE_TARGETS;
 
 beforeAll(async () => {
   app = await buildApp(); await app.ready();
-  const res = await app.inject({ method: "POST", url: "/auth/signup", payload: { organizationName: "SSRF NGO", name: "S", email: "s@ssrf-ngo.org", password: "long-enough-password" } });
+  const res = await app.inject({ method: "POST", url: "/auth/signup", payload: { acceptTerms: true, organizationName: "SSRF NGO", name: "S", email: "s@ssrf-ngo.org", password: "long-enough-password" } });
   const c = res.cookies.find((x) => x.name === "sector_session")!;
   cookie = `${c.name}=${c.value}`;
   process.env.ALLOW_PRIVATE_TARGETS = "0"; // production behaviour for this file

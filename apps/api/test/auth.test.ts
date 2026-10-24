@@ -4,6 +4,8 @@ import cookie from "@fastify/cookie";
 import { pool, rawDb, schema } from "@sector/db";
 import { registerAuthRoutes } from "../src/routes/auth.js";
 import { registerAuthDecorators } from "../src/auth/middleware.js";
+import { LEGAL_VERSION } from "../src/lib/legal.js";
+import { eq } from "drizzle-orm";
 
 // Runs against a REAL Postgres (DATABASE_URL), same as packages/db's
 // tenant-isolation tests — signup/login hit argon2 and real transactions,
@@ -40,6 +42,7 @@ describe("POST /auth/signup", () => {
       method: "POST",
       url: "/auth/signup",
       payload: {
+        acceptTerms: true,
         organizationName: "Test NGO",
         name: "Owner Person",
         email: "owner@test-ngo.org",
@@ -57,6 +60,7 @@ describe("POST /auth/signup", () => {
       method: "POST",
       url: "/auth/signup",
       payload: {
+        acceptTerms: true,
         organizationName: "Second Org",
         name: "Someone Else",
         email: "owner@test-ngo.org", // same as above
@@ -72,6 +76,7 @@ describe("POST /auth/signup", () => {
       method: "POST",
       url: "/auth/signup",
       payload: {
+        acceptTerms: true,
         organizationName: "Org",
         name: "N",
         email: "short-pw@test.org",
@@ -80,6 +85,38 @@ describe("POST /auth/signup", () => {
     });
     expect(res.statusCode).toBe(400);
     expect(res.json().error).toBe("invalid_input");
+  });
+});
+
+describe("POST /auth/signup: Terms and Privacy acceptance", () => {
+  const payload = (email: string, extra: object) => ({ organizationName: "Terms NGO", name: "T", email, password: "a-long-enough-password", ...extra });
+  const usersWith = (email: string) => rawDb.select().from(schema.users).where(eq(schema.users.email, email));
+
+  it("records the acceptance time and version on the new user", async () => {
+    const before = Date.now();
+    const res = await app.inject({ method: "POST", url: "/auth/signup", payload: payload("accepts@terms-ngo.org", { acceptTerms: true }) });
+    expect(res.statusCode).toBe(201);
+    const [user] = await usersWith("accepts@terms-ngo.org");
+    expect(user!.termsVersion).toBe(LEGAL_VERSION);
+    expect(user!.termsAcceptedAt).toBeInstanceOf(Date);
+    expect(user!.termsAcceptedAt!.getTime()).toBeGreaterThanOrEqual(before - 1000);
+  });
+
+  it.each([
+    ["missing", {}],
+    ["false", { acceptTerms: false }],
+    ["a truthy string", { acceptTerms: "true" }],
+  ])("refuses with 400 and creates nothing when acceptance is %s", async (_label, extra) => {
+    const email = `refused-${_label.replace(/\s/g, "-")}@terms-ngo.org`;
+    const res = await app.inject({ method: "POST", url: "/auth/signup", payload: payload(email, extra) });
+    expect(res.statusCode).toBe(400);
+    expect(res.cookies.some((c) => c.name === "sector_session")).toBe(false);
+    expect(await usersWith(email)).toHaveLength(0);
+  });
+
+  it("names the reason when the box is not ticked", async () => {
+    const res = await app.inject({ method: "POST", url: "/auth/signup", payload: payload("unticked@terms-ngo.org", { acceptTerms: false }) });
+    expect(res.json().error).toBe("terms_not_accepted");
   });
 });
 
@@ -126,6 +163,7 @@ describe("GET /auth/me and cross-tenant isolation", () => {
       method: "POST",
       url: "/auth/signup",
       payload: {
+        acceptTerms: true,
         organizationName: "Org Alpha",
         name: "Alpha Owner",
         email: "alpha@example.org",
@@ -136,6 +174,7 @@ describe("GET /auth/me and cross-tenant isolation", () => {
       method: "POST",
       url: "/auth/signup",
       payload: {
+        acceptTerms: true,
         organizationName: "Org Beta",
         name: "Beta Owner",
         email: "beta@example.org",
