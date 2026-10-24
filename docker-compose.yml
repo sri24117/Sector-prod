@@ -86,6 +86,7 @@ services:
       TRUST_PROXY: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
       # Explicit: env_file may carry NODE_ENV=development, which would bind loopback only.
       HOST: 0.0.0.0
+      NODE_ENV: production
     depends_on:
       postgres:
         condition: service_healthy
@@ -110,6 +111,8 @@ services:
       retries: 3
       start_period: 30s
     env_file: .env
+    environment:
+      NODE_ENV: production # env_file may carry NODE_ENV=development
     depends_on:
       - api
     deploy:
@@ -122,8 +125,12 @@ services:
       context: .
       dockerfile: services/workers/Dockerfile
     restart: unless-stopped
-    env_file: .env
+    # Only what the worker uses, not the whole .env: it runs Chromium on untrusted sites, so it
+    # holds no encryption key, LLM key or OAuth secret. Add a variable here only if the worker reads it.
     environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?set in .env}
+      REDIS_URL: ${REDIS_URL:?set in .env}
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
     depends_on:
       postgres:
