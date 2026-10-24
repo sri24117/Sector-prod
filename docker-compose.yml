@@ -132,6 +132,10 @@ services:
       DATABASE_URL: ${DATABASE_URL:?set in .env}
       REDIS_URL: ${REDIS_URL:?set in .env}
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+    # Lets Chromium create the user namespaces its renderer sandbox needs; without it the
+    # report browser cannot start sandboxed. See infra/seccomp/README.md.
+    security_opt:
+      - seccomp=./infra/seccomp/chromium.json
     depends_on:
       postgres:
         condition: service_healthy
