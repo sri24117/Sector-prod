@@ -9,6 +9,15 @@ import { isSafePublicUrl } from "../lib/ssrf.js";
 import { normalizeUrl } from "./audit.js";
 import { buildOrganizationJsonLd, manualFixPackage } from "../remediation/fixes.js";
 
+// The connector sends the Application Password as a Basic auth header, so only over https.
+// The one exception is a loopback mock site in local dev/tests (ALLOW_PRIVATE_TARGETS=1): it never leaves the machine.
+const HTTPS_REQUIRED = "Your website address must start with https:// to connect WordPress safely. Turn on HTTPS (an SSL certificate) for your site with your web host, then connect again using the https:// address.";
+function credentialsMaySendTo(siteUrl: string): boolean {
+  const u = new URL(siteUrl);
+  if (u.protocol === "https:") return true;
+  return process.env.ALLOW_PRIVATE_TARGETS === "1" && /^(localhost|127\.\d+\.\d+\.\d+|\[::1\])$/.test(u.hostname);
+}
+
 // Slice 3: finding -> proposed fix -> applied fix (WordPress) -> re-crawl -> RemediationLog.
 export async function registerRemediationRoutes(app: FastifyInstance): Promise<void> {
   const write = [authenticate, requireRole(["owner", "staff"])];
@@ -19,6 +28,7 @@ export async function registerRemediationRoutes(app: FastifyInstance): Promise<v
     if (!parsed.success) return reply.status(400).send({ error: "invalid_input", message: "siteUrl, username and applicationPassword are required." });
     const siteUrl = normalizeUrl(parsed.data.siteUrl);
     if (!siteUrl || !(await isSafePublicUrl(siteUrl))) return reply.status(400).send({ error: "url_not_allowed", message: "That address can't be connected." });
+    if (!credentialsMaySendTo(siteUrl)) return reply.status(400).send({ error: "https_required", message: HTTPS_REQUIRED });
 
     const creds: WordPressCredentials = { siteUrl, username: parsed.data.username, applicationPassword: parsed.data.applicationPassword };
     try {
@@ -66,6 +76,7 @@ export async function registerRemediationRoutes(app: FastifyInstance): Promise<v
       const creds = decryptJson<WordPressCredentials>(conn.credentialsEncrypted);
       // Guardrail (skill §6): re-verify this org's credentials immediately before touching a live site.
       if (!(await isSafePublicUrl(creds.siteUrl))) throw new Error("Connection target is not allowed.");
+      if (!credentialsMaySendTo(creds.siteUrl)) throw new Error("Stored connection is not https."); // e.g. a row saved before https was required
       await verifyWordPressCredentials(creds);
 
       const [org, profile] = await Promise.all([db.organization.get(), db.organizationProfile.get()]);

@@ -66,6 +66,16 @@ describe("Slice 3 remediation (WordPress)", () => {
     await new Promise<void>((r) => redirector.close(() => r()));
   });
 
+  it("refuses a plain-http site address, so the Application Password is never sent unencrypted", async () => {
+    for (const siteUrl of ["http://ngo.example.org", "http://10.0.0.5"]) {
+      const res = await call(B.cookie, "POST", "/connections/wordpress", { siteUrl, username: "admin", applicationPassword: APP_PASSWORD });
+      expect(res.statusCode, siteUrl).toBe(400);
+      expect(res.json().error).toBe("https_required");
+      expect(res.json().message).toMatch(/https:\/\//);
+    }
+    expect((await call(B.cookie, "GET", "/connections/wordpress")).statusCode).toBe(404); // nothing stored
+  });
+
   it("runs and persists an audit with findings; the site starts without schema", async () => {
     const res = await call(A.cookie, "POST", "/audits", { url: wp.url });
     expect(res.statusCode).toBe(201);
