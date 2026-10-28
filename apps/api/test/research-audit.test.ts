@@ -13,7 +13,7 @@ const queued: { auditId: string; organizationId: string }[] = [];
 let failQueue = false;
 
 async function signup(name: string, email: string, websiteUrl: string) {
-  const res = await app.inject({ method: "POST", url: "/auth/signup", payload: { organizationName: name, name: "Owner", email, password: "long-enough-password", websiteUrl, orgType: "ngo" } });
+  const res = await app.inject({ method: "POST", url: "/auth/signup", payload: { acceptTerms: true, organizationName: name, name: "Owner", email, password: "long-enough-password", websiteUrl, orgType: "ngo" } });
   expect(res.statusCode).toBe(201);
   const c = res.cookies.find((x) => x.name === "sector_session")!;
   return { cookie: `${c.name}=${c.value}`, orgId: res.json().organizationId as string, url: websiteUrl };
