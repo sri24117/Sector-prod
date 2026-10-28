@@ -47,8 +47,8 @@ already scaffolded (a `payment.captured` webhook enqueues a job the same
 way a crawl request would, rather than needing new infrastructure).
 
 Proposed shape (subject to the feature spec, not committed here):
-- One `Plan` per skill-bundle tier (exact tiers/pricing: **UNKNOWN — product
-  decision, not proposed here**).
+- One `Plan` per skill-bundle tier (tiers and pricing: **founder's confirmed decision, 2026-10-28**, see `docs/product/product.md` "Pricing and plans").
+  The decision does not change this ADR's status: Razorpay is still PROPOSED and payments are manual invoicing.
 - `Subscription` row per `Organization`, Razorpay `subscription_id` as the
   external reference, status mirrors Razorpay's own subscription lifecycle
   rather than inventing a parallel state machine.

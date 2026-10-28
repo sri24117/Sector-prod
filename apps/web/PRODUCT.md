@@ -18,7 +18,7 @@ Make Indian NGOs visible in search and AI answer engines without an in-house mar
 Execution instead of advice: SEO/GEO fixes are applied live to the NGO's own WordPress site and re-verified by a re-crawl, rather than reported as a to-do list. Built around nonprofit-specific constraints (FCRA-gated Ad Grants, DPDP, beneficiary consent) that generic marketing tools ignore.
 
 ## Operating Context
-Routes: `/` (free audit), `/signup`, `/login`, `/dashboard`, `/audits` (audit history, findings, WordPress connection, fixes), `/ad-grants` (FCRA-confirmed orgs only), `/content` (brand voice, consent records, AI drafts, approve/export). Roles: owner, staff, viewer.
+Routes: `/` (free audit), `/signup`, `/login`, `/dashboard`, `/audits` (audit history, findings, WordPress connection, fixes), `/calendar` (manual content planning, Starter and above), `/ad-grants` (FCRA-confirmed orgs only), `/content` (brand voice, consent records, manual/AI drafts, revision-aware editing, approve/download). Roles: owner, staff, viewer.
 
 ## Capabilities and Constraints
 - Audit checks: structured data, AI crawlers in robots.txt, llms.txt, heading hierarchy, FAQ pairs, front-loaded stat, freshness. Raw HTML only; JS-heavy sites may under-score, and the UI must say so.
@@ -41,3 +41,7 @@ No customers, testimonials, case studies, or benchmarks exist yet. Do not fabric
 
 ## Accessibility & Inclusion
 WCAG AA contrast everywhere, visible keyboard focus on every interactive element, fully usable at 360px width, `prefers-reduced-motion` respected, and pass/fail never conveyed by colour alone.
+
+## Starter pilot scope
+
+The founder authorized a minimal report → supported website improvement → content/calendar journey on 28 October 2026. Calendar entries plan manual posting and never claim to schedule or publish. Keep the existing roles and manual billing; broader team management is deferred. WordPress changes require an exact-target proposal and current-state approval, retain restoration data, and distinguish saved changes from verified changes. Companion plugin 0.2.0 is required for schema snapshots and compare-and-swap writes. See docs/plans/ngo-starter-mvp.md.

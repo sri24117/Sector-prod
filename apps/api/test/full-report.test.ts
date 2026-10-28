@@ -130,3 +130,14 @@ describe("full report", () => {
     expect(res.json()).toMatchObject({ verified: true, method: "wordpress" });
   });
 });
+
+it("admits only one report when requests arrive concurrently", async () => {
+  const c = await signup("Concurrent reports", "concurrent@reports.org", siteUrl);
+  await rawDb.update(schema.organizations).set({ plan: "starter" }).where(eq(schema.organizations.id, c.orgId));
+  await scopedDb(c.orgId).siteVerification.ensure("127.0.0.1");
+  await scopedDb(c.orgId).siteVerification.markVerified("meta");
+  const before = queued.length;
+  const responses = await Promise.all([call(c.cookie, "POST", "/reports"), call(c.cookie, "POST", "/reports")]);
+  expect(responses.map((r) => r.statusCode).sort()).toEqual([202, 409]);
+  expect(queued.length - before).toBe(1);
+});

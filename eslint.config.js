@@ -1,16 +1,15 @@
-// Minimal flat ESLint config (ESLint 9). Extend per-package only if a real
-// need appears — don't add rules preemptively.
 import js from "@eslint/js";
+import tseslint from "typescript-eslint";
 
 export default [
+  { ignores: ["**/dist/**", "**/.next/**", "**/.turbo/**", "**/node_modules/**"] },
   js.configs.recommended,
   {
-    ignores: ["**/dist/**", "**/.next/**", "**/.turbo/**", "**/node_modules/**"],
-  },
-  {
     files: ["**/*.ts", "**/*.tsx"],
+    languageOptions: { parser: tseslint.parser, parserOptions: { ecmaFeatures: { jsx: true }, sourceType: "module" } },
     rules: {
-      "no-unused-vars": "off", // superseded by @typescript-eslint in packages that add it
+      "no-unused-vars": "off", // TypeScript checks these separately when configured.
+      "no-undef": "off", // TypeScript resolves types, browser globals and Node globals.
     },
   },
 ];

@@ -6,13 +6,14 @@ import { anthropicProvider, type LlmProvider } from "@sector/ai";
 import { buildApp } from "../src/app.js";
 import { missingConsent } from "../src/content/consent.js";
 
-const prompts: string[] = [];
+const prompts: string[] = []; const systems: string[] = [];
 // A fake LLM that echoes placeholders it was given, like a real model told to use them.
-const fake: LlmProvider = { async complete({ prompt }) { prompts.push(prompt); const tok = prompt.match(/\[BENEFICIARY_\d+\]/)?.[0] ?? "the family"; return { text: `${tok} rebuilt her life after joining our program.`, model: "fake-model" }; } };
+const fake: LlmProvider = { async complete({ prompt, system }) { prompts.push(prompt); systems.push(system); const tok = prompt.match(/\[BENEFICIARY_\d+\]/)?.[0] ?? "the family"; return { text: `${tok} rebuilt her life after joining our program.`, model: "fake-model" }; } };
 let app: FastifyInstance;
 const call = (cookie: string, method: "GET" | "POST" | "PUT", url: string, payload?: unknown) => app.inject({ method, url, headers: { cookie }, payload: payload as never });
 async function signup(name: string, email: string) {
   const r = await app.inject({ method: "POST", url: "/auth/signup", payload: { acceptTerms: true, organizationName: name, name: "O", email, password: "long-enough-password" } });
+  await rawDb.update(schema.organizations).set({ plan: "starter" }).where(eq(schema.organizations.id, r.json().organizationId)); // content is Starter and above
   const c = r.cookies.find((x) => x.name === "sector_session")!; return { cookie: `${c.name}=${c.value}`, userId: r.json().userId as string };
 }
 const gen = (cookie: string, extra: object = {}) => call(cookie, "POST", "/content/generate", { kind: "case_study", topic: "Asha's story", facts: ["Asha Devi joined our tailoring program in 2024", "She now earns a stable income"], beneficiaries: ["Asha Devi"], ...extra });
@@ -133,4 +134,13 @@ describe("pseudonymize (pure)", () => {
     expect(text).toContain("Ashagram");                       // word-boundary: doesn't mangle unrelated words
     expect(restore(text, map)).toBe("Asha Devi joined. Asha's income rose; Devi said thanks. Ashagram is a place.");
   });
+});
+
+it("redacts declared short names from every provider-bound field, including brand voice", async () => {
+  const x = await signup("Short name NGO", "short-names@example.org");
+  await call(x.cookie, "PUT", "/brand-kit", { voice: "Li Na writes clear program updates. Li uses respectful language." });
+  const r = await call(x.cookie, "POST", "/content/generate", { kind: "quote", topic: "Li update", facts: ["Li Na joined the program. Li shared feedback."], beneficiaries: ["Li Na"] });
+  expect(r.statusCode).toBe(201);
+  expect(prompts.at(-1)).not.toMatch(/\bLi\b|\bNa\b/);
+  expect(systems.at(-1)).not.toMatch(/\bLi\b|\bNa\b/);
 });
