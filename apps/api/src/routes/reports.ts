@@ -3,6 +3,7 @@ import { z } from "zod";
 import { scopedDb } from "@sector/db";
 import { authenticate, requireRole, logSecurityEvent } from "../auth/middleware.js";
 import { normalizeUrl } from "./audit.js";
+import { requireFeature } from "../auth/plan.js";
 import { siteHost, instructions, wordpressMatches, metaTagMatches, dnsMatches } from "../lib/site-verification.js";
 
 // Full report (docs/superpowers/specs/2026-10-04-full-report-design.md):
@@ -11,7 +12,6 @@ import { siteHost, instructions, wordpressMatches, metaTagMatches, dnsMatches } 
 
 export interface ReportQueue { add(job: { reportId: string; organizationId: string }): Promise<void> }
 
-const PAID_PLANS = new Set(["pilot", "paid"]);
 const DAILY_LIMIT = 10;
 // Reports are self-contained HTML built by the worker: no scripts, only inline styles and data: images.
 const REPORT_CSP = "default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; sandbox";
@@ -60,20 +60,17 @@ export async function registerReportRoutes(app: FastifyInstance, queue: ReportQu
     return { verified: true, method, host: site.host };
   });
 
-  app.post("/reports", { preHandler: write, config: { rateLimit: { max: 20, timeWindow: "1 hour" } } }, async (req, reply) => {
+  app.post("/reports", { preHandler: [...write, requireFeature("full_report")], config: { rateLimit: { max: 20, timeWindow: "1 hour" } } }, async (req, reply) => {
     const auth = req.auth!; const db = scopedDb(auth.organizationId);
-    const org = await db.organization.get();
-    if (!org || !PAID_PLANS.has(org.plan)) return reply.status(403).send({ error: "plan_required", message: "The full report is part of the paid plan. Contact SEctOr to upgrade." });
     const site = await ownSite(auth.organizationId);
     const verification = await db.siteVerification.get();
     if (!site || !verification?.verifiedAt || verification.host !== site.host) {
       return reply.status(403).send({ error: "site_not_verified", message: "Verify that you own your website first." });
     }
-    if ((await db.reports.activeCount()) > 0) return reply.status(409).send({ error: "report_in_progress", message: "A report is already being prepared. It usually takes a few minutes." });
-    if ((await db.reports.countSince(new Date(Date.now() - 86_400_000))) >= DAILY_LIMIT) {
-      return reply.status(429).send({ error: "daily_limit", message: `You can create up to ${DAILY_LIMIT} reports a day.` });
-    }
-    const report = await db.reports.create({ siteUrl: site.url, createdBy: auth.userId });
+    const admission = await db.reports.admit({ siteUrl: site.url, createdBy: auth.userId }, DAILY_LIMIT);
+    if (admission.error === "report_in_progress") return reply.status(409).send({ error: admission.error, message: "A report is already being prepared." });
+    if (admission.error === "daily_limit") return reply.status(429).send({ error: admission.error, message: `You can create up to ${DAILY_LIMIT} reports a day.` });
+    const report = admission.report!;
     try {
       await queue.add({ reportId: report.id, organizationId: auth.organizationId });
     } catch (err) {
@@ -99,7 +96,7 @@ export async function registerReportRoutes(app: FastifyInstance, queue: ReportQu
     const row = await scopedDb(req.auth!.organizationId).reports.pdf((req.params as { id: string }).id);
     if (!row?.pdf) return reply.status(404).send({ error: "not_found", message: "Report not found." });
     let host = "site"; try { host = siteHost(row.siteUrl); } catch { /* keep default */ }
-    const name = `sector-report-${host}-${row.createdAt.toISOString().slice(0, 10)}.pdf`.replace(/[^a-zA-Z0-9.\-]/g, "-");
+    const name = `sector-report-${host}-${row.createdAt.toISOString().slice(0, 10)}.pdf`.replace(/[^a-zA-Z0-9.-]/g, "-");
     return reply.header("content-disposition", `attachment; filename="${name}"`).header("cache-control", "private, no-store").type("application/pdf").send(row.pdf);
   });
 }

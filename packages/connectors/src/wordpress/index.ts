@@ -24,7 +24,7 @@ function authHeader(c: WordPressCredentials): string {
 }
 
 function endpoint(siteUrl: string, path: string): string {
-  return new URL(path, siteUrl.endsWith("/") ? siteUrl : siteUrl + "/").toString();
+  return new URL(path.replace(/^\/+/, ""), siteUrl.endsWith("/") ? siteUrl : siteUrl + "/").toString();
 }
 
 export class WordPressError extends Error {
@@ -60,12 +60,20 @@ export async function verifyWordPressCredentials(c: WordPressCredentials): Promi
   return { ok: true, userName: body.name ?? c.username };
 }
 
-/** Writes the JSON-LD document that the companion plugin will render in <head>. */
-export async function applyJsonLdSchema(c: WordPressCredentials, jsonLd: Record<string, unknown>): Promise<void> {
+/** Reads only the schema managed by Sector; an older plugin must be upgraded. */
+export async function readJsonLdSchema(c: WordPressCredentials): Promise<Record<string, unknown> | null> {
+  const res = await wpFetch(endpoint(c.siteUrl, "/wp-json/sector/v1/schema"), { headers: { authorization: authHeader(c) } });
+  if (!res.ok) throw new WordPressError("Update SEctOr Companion before applying a fix: schema backup is unavailable.", res.status);
+  const body = await res.json() as { jsonLd: Record<string, unknown> | null };
+  if (!("jsonLd" in body)) throw new WordPressError("The plugin did not return a schema snapshot.");
+  return body.jsonLd;
+}
+
+/** Compare-and-swap prevents overwriting a value changed since approval. */
+export async function applyJsonLdSchema(c: WordPressCredentials, jsonLd: Record<string, unknown> | null, expectedJsonLd: Record<string, unknown> | null): Promise<void> {
   const res = await wpFetch(endpoint(c.siteUrl, "/wp-json/sector/v1/schema"), {
-    method: "POST",
-    headers: { authorization: authHeader(c), "content-type": "application/json" },
-    body: JSON.stringify({ jsonLd }),
+    method: "POST", headers: { authorization: authHeader(c), "content-type": "application/json" },
+    body: JSON.stringify({ jsonLd, expectedJsonLd }),
   });
-  if (!res.ok) throw new WordPressError(`Companion plugin refused the schema update (${res.status}).`, res.status);
+  if (!res.ok) throw new WordPressError(`Companion plugin refused the schema update (${res.status}). Recheck the website before retrying.`, res.status);
 }

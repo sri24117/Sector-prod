@@ -18,14 +18,25 @@ const CRAWL_BUDGET = 180_000;
 const SKIP_EXT = /\.(pdf|jpe?g|png|gif|webp|svg|zip|docx?|xlsx?|pptx?|mp4|mp3)$/i;
 const require = createRequire(import.meta.url);
 
+// The reported site's JavaScript is untrusted, so Chromium keeps its renderer sandbox (no --no-sandbox;
+// the worker container allows it, see docker-compose.yml). WebRTC is the one path --proxy-server does
+// not cover (UDP), so it may only use proxied connections, and pages get no RTCPeerConnection at all.
 export const browserArgs = (proxy: GuardedProxy) => [
   `--proxy-server=${proxy.url}`,
   "--proxy-bypass-list=<-loopback>", // also send localhost through the proxy, which refuses it
-  "--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu",
+  "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+  "--disable-dev-shm-usage", "--disable-gpu",
 ];
 
+// Defence in depth: the browser processes get none of the worker's secrets (DATABASE_URL etc.).
+export function browserEnv(): Record<string, string> {
+  const keep = ["PATH", "HOME", "TMPDIR", "TEMP", "TMP", "LANG", "TZ", "SYSTEMROOT", "LOCALAPPDATA", "FONTCONFIG_PATH"];
+  return Object.fromEntries(keep.flatMap((k) => (process.env[k] ? [[k, process.env[k]!]] : [])));
+}
+
 export async function launchBrowser(proxy: GuardedProxy): Promise<Browser> {
-  return chromium.launch({ args: browserArgs(proxy) });
+  // chromiumSandbox: Playwright adds --no-sandbox itself unless told otherwise.
+  return chromium.launch({ args: browserArgs(proxy), chromiumSandbox: true, env: browserEnv() });
 }
 
 const bareHost = (u: string) => new URL(u).hostname.toLowerCase().replace(/^www\./, "");
@@ -91,6 +102,8 @@ export async function crawlSite(browser: Browser, startUrl: string, signal: Abor
   const context = await browser.newContext({ userAgent: UA, viewport: { width: 1280, height: 800 }, ignoreHTTPSErrors: false });
   // tsx/esbuild wraps named functions in __name(); functions sent to page.evaluate need it defined in the page.
   await context.addInitScript("window.__name = (fn) => fn;");
+  // Reports need no WebRTC; removing it backs up the browser flag above.
+  await context.addInitScript("for (const k of ['RTCPeerConnection', 'webkitRTCPeerConnection']) { try { delete window[k]; } catch {} }");
   const notes: string[] = [];
   const pages: PageFacts[] = [];
   const queue: { url: string; from: string }[] = [];
@@ -210,7 +223,7 @@ async function mapLimit<T, R>(items: T[], n: number, fn: (x: T) => Promise<R>): 
 export async function runLighthouse(url: string, proxy: GuardedProxy, signal?: AbortSignal): Promise<LighthouseResult> {
   const { launch } = await import("chrome-launcher");
   const lighthouse = (await import("lighthouse")).default;
-  const chrome = await launch({ chromePath: chromium.executablePath(), chromeFlags: ["--headless=new", ...browserArgs(proxy)] });
+  const chrome = await launch({ chromePath: chromium.executablePath(), chromeFlags: ["--headless=new", ...browserArgs(proxy)], envVars: browserEnv() });
   const stop = () => chrome.kill();
   signal?.addEventListener("abort", stop, { once: true });
   try {

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { pool } from "@sector/db";
+import { eq } from "drizzle-orm";
+import { pool, rawDb, schema } from "@sector/db";
 
 // Roadmap §2 at the API boundary: private targets refused on every entry point,
 // fail-closed DNS, rate limit on the public audit, and a concurrency cap.
@@ -15,6 +16,7 @@ const prevAllow = process.env.ALLOW_PRIVATE_TARGETS;
 beforeAll(async () => {
   app = await buildApp(); await app.ready();
   const res = await app.inject({ method: "POST", url: "/auth/signup", payload: { organizationName: "SSRF NGO", name: "S", email: "s@ssrf-ngo.org", password: "long-enough-password" } });
+  await rawDb.update(schema.organizations).set({ plan: "starter" }).where(eq(schema.organizations.id, res.json().organizationId)); // WordPress connect is Starter and above
   const c = res.cookies.find((x) => x.name === "sector_session")!;
   cookie = `${c.name}=${c.value}`;
   process.env.ALLOW_PRIVATE_TARGETS = "0"; // production behaviour for this file
@@ -68,10 +70,10 @@ describe("public /audit limits", () => {
   it("answers busy instead of queueing when every audit slot is taken", async () => {
     process.env.AUDIT_CONCURRENCY = "1";
     let release!: () => void;
-    vi.mocked(runAudit).mockImplementationOnce(() => new Promise((r) => { release = () => r({ url: "https://example.org/", score: 1, runAt: new Date().toISOString(), checks: [] }); }));
-    const first = app.inject({ method: "POST", url: "/audit", payload: { url: "https://example.org" }, remoteAddress: "198.51.100.251" });
+    vi.mocked(runAudit).mockImplementationOnce(() => new Promise((r) => { release = () => r({ url: "https://1.1.1.1/", score: 1, runAt: new Date().toISOString(), checks: [] }); }));
+    const first = app.inject({ method: "POST", url: "/audit", payload: { url: "https://1.1.1.1" }, remoteAddress: "198.51.100.251" }).then((response) => response);
     await vi.waitFor(() => expect(runAudit).toHaveBeenCalledTimes(1));
-    const second = await app.inject({ method: "POST", url: "/audit", payload: { url: "https://example.org" }, remoteAddress: "198.51.100.252" });
+    const second = await app.inject({ method: "POST", url: "/audit", payload: { url: "https://1.1.1.1" }, remoteAddress: "198.51.100.252" });
     expect(second.statusCode).toBe(503);
     expect(second.json().error).toBe("busy");
     release();

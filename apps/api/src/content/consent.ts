@@ -21,8 +21,8 @@ export function pseudonymize(text: string, names: string[]): { text: string; map
   const map = new Map<string, string>(); let out = text;
   names.forEach((name, i) => {
     const full = `[BENEFICIARY_${i + 1}]`; map.set(full, name.trim());
-    out = out.replace(new RegExp(esc(name.trim()).replace(/\s+/g, "\\s+"), "gi"), full);
-    name.trim().split(/\s+/).filter((w) => w.length >= 3).forEach((part, k) => {
+    out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}])${esc(name.trim()).replace(/\s+/g, "\\s+")}(?![\\p{L}\\p{N}])`, "giu"), full);
+    name.trim().split(/\s+/).filter(Boolean).forEach((part, k) => {
       const tok = `[BENEFICIARY_${i + 1}_PART_${k + 1}]`; map.set(tok, part);
       out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}])${esc(part)}(?![\\p{L}\\p{N}])`, "giu"), tok);
     });

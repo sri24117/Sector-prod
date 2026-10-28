@@ -3,6 +3,7 @@ import { z } from "zod";
 import { scopedDb } from "@sector/db";
 import { assertFcraConfirmed, runComplianceCheck, FcraNotConfirmedError, NoAdGrantAccountError, GatewayUnavailableError, unavailableGateway, type GoogleAdsGateway } from "@sector/ad-grants";
 import { authenticate, requireRole, logSecurityEvent } from "../auth/middleware.js";
+import { requireFeature } from "../auth/plan.js";
 
 // Slice 4. EVERY handler runs the FCRA gate first (security.md "FCRA gate"): confirmed by internal ops,
 // never inferred from the org's own self-declaration. The denial message is deliberately neutral —
@@ -18,10 +19,12 @@ export async function registerAdGrantsRoutes(app: FastifyInstance, gateway: Goog
       throw err;
     }
   };
-  const read = [authenticate, fcraGate];
-  const write = [authenticate, requireRole(["owner", "staff"]), fcraGate];
+  // Pro plan first, then the FCRA gate (ops-confirmed, unchanged).
+  const plan = requireFeature("ad_grants");
+  const read = [authenticate, plan, fcraGate];
+  const write = [authenticate, requireRole(["owner", "staff"]), plan, fcraGate];
 
-  app.post("/ad-grants/account", { preHandler: [authenticate, requireRole(["owner"]), fcraGate] }, async (request, reply) => {
+  app.post("/ad-grants/account", { preHandler: [authenticate, requireRole(["owner"]), plan, fcraGate] }, async (request, reply) => {
     const parsed = z.object({ googleCustomerId: z.string().regex(/^\d{3}-?\d{3}-?\d{4}$/, "Expected a 10-digit Google Ads customer ID") }).safeParse(request.body);
     if (!parsed.success) return reply.status(400).send({ error: "invalid_input", message: parsed.error.issues[0]!.message });
     const account = await scopedDb(request.auth!.organizationId).adGrantAccount.upsert(parsed.data.googleCustomerId.replace(/-/g, ""));

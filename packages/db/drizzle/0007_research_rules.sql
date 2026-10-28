@@ -1,2 +1,2 @@
-ALTER TABLE "research_findings" DROP CONSTRAINT IF EXISTS "research_findings_source_ck";--> statement-breakpoint
+ALTER TABLE "research_findings" DROP CONSTRAINT "research_findings_source_ck";--> statement-breakpoint
 ALTER TABLE "research_findings" ADD CONSTRAINT "research_findings_source_ck" CHECK ("research_findings"."layer" = 'rules' or ("research_findings"."source_url" is not null and length(trim("research_findings"."source_url")) > 0));

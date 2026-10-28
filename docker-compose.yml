@@ -87,6 +87,7 @@ services:
       # Explicit: env_file may carry NODE_ENV=development, which would bind loopback only.
       HOST: 0.0.0.0
       RESEARCH_AUDIT_ENABLED: ${RESEARCH_AUDIT_ENABLED:-false}
+      NODE_ENV: production
     depends_on:
       postgres:
         condition: service_healthy
@@ -111,6 +112,8 @@ services:
       retries: 3
       start_period: 30s
     env_file: .env
+    environment:
+      NODE_ENV: production # env_file may carry NODE_ENV=development
     depends_on:
       - api
     deploy:
@@ -123,9 +126,17 @@ services:
       context: .
       dockerfile: services/workers/Dockerfile
     restart: unless-stopped
-    env_file: .env
+    # Only what the worker uses, not the whole .env: it runs Chromium on untrusted sites, so it
+    # holds no encryption key, LLM key or OAuth secret. Add a variable here only if the worker reads it.
     environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?set in .env}
+      REDIS_URL: ${REDIS_URL:?set in .env}
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+    # Lets Chromium create the user namespaces its renderer sandbox needs; without it the
+    # report browser cannot start sandboxed. See infra/seccomp/README.md.
+    security_opt:
+      - seccomp=./infra/seccomp/chromium.json
     depends_on:
       postgres:
         condition: service_healthy
