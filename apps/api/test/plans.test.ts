@@ -14,7 +14,7 @@ const call = (cookie: string, method: "GET" | "POST" | "PUT", url: string, paylo
 let n = 0;
 async function org(plan: string) {
   n += 1;
-  const r = await app.inject({ method: "POST", url: "/auth/signup", payload: { organizationName: `Org ${n}`, name: "O", email: `o${n}@plans.test`, password: "long-enough-password" }, remoteAddress: `198.51.100.${n}` }); // own client address: signup is rate limited per client
+  const r = await app.inject({ method: "POST", url: "/auth/signup", payload: { acceptTerms: true, organizationName: `Org ${n}`, name: "O", email: `o${n}@plans.test`, password: "long-enough-password" }, remoteAddress: `198.51.100.${n}` }); // own client address: signup is rate limited per client
   expect(r.statusCode).toBe(201);
   const c = r.cookies.find((x) => x.name === "sector_session")!;
   const orgId = r.json().organizationId as string;

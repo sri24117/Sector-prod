@@ -18,7 +18,7 @@ function website(raw: string): string | undefined {
 
 export default function SignupPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ organizationName: "", name: "", email: "", password: "", fcraSelfDeclared: false, panNumber: "", websiteUrl: "", orgType: "" });
+  const [form, setForm] = useState({ organizationName: "", name: "", email: "", password: "", fcraSelfDeclared: false, panNumber: "", websiteUrl: "", orgType: "", acceptTerms: false });
   const [fromAudit, setFromAudit] = useState(false);
 
   // Arriving from a free audit (/signup?url=...): carry the audited site over.
@@ -52,6 +52,7 @@ export default function SignupPage() {
           websiteUrl: website(form.websiteUrl),
           orgType: form.orgType || undefined,
           fromAudit: fromAudit || undefined,
+          acceptTerms: form.acceptTerms,
         }),
       });
       if (!res.ok) {
@@ -117,8 +118,13 @@ export default function SignupPage() {
           </Field>
         </div>
 
+        <label className="check" style={{ marginTop: "var(--s-6)" }}>
+          <input type="checkbox" checked={form.acceptTerms} onChange={(e) => set("acceptTerms", e.target.checked)} required />
+          <span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a></span>
+        </label>
+
         <div className="actions">
-          {error && <div style={{ width: "100%" }}><Message text={error} /></div>}
+          {error &&<div style={{ width: "100%" }}><Message text={error} /></div>}
           <button type="submit" className="btn btn-block" disabled={loading}>{loading ? "Creating account…" : "Create account"}</button>
         </div>
       </form>

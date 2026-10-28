@@ -11,7 +11,7 @@ let app: FastifyInstance; let wp: MockWp; let signupAddress = 0;
 const APP_PASSWORD = "abcd efgh ijkl mnop";
 
 async function signup(name: string, email: string, websiteUrl?: string) {
-  const res = await app.inject({ method: "POST", url: "/auth/signup", remoteAddress: `192.0.2.${++signupAddress}`, payload: { organizationName: name, name: "Owner", email, password: "long-enough-password", websiteUrl } });
+  const res = await app.inject({ method: "POST", url: "/auth/signup", remoteAddress: `192.0.2.${++signupAddress}`, payload: { acceptTerms: true, organizationName: name, name: "Owner", email, password: "long-enough-password", websiteUrl } });
   expect(res.statusCode).toBe(201);
   const c = res.cookies.find((x) => x.name === "sector_session")!;
   await rawDb.update(schema.organizations).set({ plan: "starter" }).where(eq(schema.organizations.id, res.json().organizationId)); // live fixes are Starter and above

@@ -15,7 +15,7 @@ const prevAllow = process.env.ALLOW_PRIVATE_TARGETS;
 
 beforeAll(async () => {
   app = await buildApp(); await app.ready();
-  const res = await app.inject({ method: "POST", url: "/auth/signup", payload: { organizationName: "SSRF NGO", name: "S", email: "s@ssrf-ngo.org", password: "long-enough-password" } });
+  const res = await app.inject({ method: "POST", url: "/auth/signup", payload: { acceptTerms: true, organizationName: "SSRF NGO", name: "S", email: "s@ssrf-ngo.org", password: "long-enough-password" } });
   await rawDb.update(schema.organizations).set({ plan: "starter" }).where(eq(schema.organizations.id, res.json().organizationId)); // WordPress connect is Starter and above
   const c = res.cookies.find((x) => x.name === "sector_session")!;
   cookie = `${c.name}=${c.value}`;

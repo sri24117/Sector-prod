@@ -8,7 +8,7 @@ let app: FastifyInstance; let signupIp = 0;
 beforeAll(async () => { app = await buildApp(); await app.ready(); });
 afterAll(async () => { await pool.query("TRUNCATE organizations, users CASCADE"); await app.close(); await pool.end(); });
 async function org(tag: string, plan = "starter") {
-  const r = await app.inject({ method: "POST", url: "/auth/signup", remoteAddress: `192.0.2.${++signupIp}`, payload: { name: "Coordinator", email: `${tag}@example.org`, password: "long-pilot-password", organizationName: tag } });
+  const r = await app.inject({ method: "POST", url: "/auth/signup", remoteAddress: `192.0.2.${++signupIp}`, payload: { acceptTerms: true, name: "Coordinator", email: `${tag}@example.org`, password: "long-pilot-password", organizationName: tag } });
   await rawDb.update(schema.organizations).set({ plan }).where(eq(schema.organizations.id, r.json().organizationId));
   const cookie = r.cookies.find((c) => c.name === "sector_session")!;
   return { cookie: `${cookie.name}=${cookie.value}`, ...r.json() };

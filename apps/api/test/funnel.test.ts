@@ -37,7 +37,7 @@ describe("funnel events", () => {
 
   it("a signup that came from an audit is recorded against the new org", async () => {
     const res = await app.inject({ method: "POST", url: "/auth/signup", payload: {
-      organizationName: "Hope NGO", name: "H", email: "h@hope-ngo.org", password: "long-enough-password", websiteUrl: "https://hope-ngo.org/", fromAudit: true,
+      acceptTerms: true, organizationName: "Hope NGO", name: "H", email: "h@hope-ngo.org", password: "long-enough-password", websiteUrl: "https://hope-ngo.org/", fromAudit: true,
     } });
     expect(res.statusCode).toBe(201);
     const rows = await events("signup_from_audit");
@@ -47,7 +47,7 @@ describe("funnel events", () => {
   });
 
   it("a signup without an audit records nothing", async () => {
-    await app.inject({ method: "POST", url: "/auth/signup", payload: { organizationName: "Other", name: "O", email: "o@other.org", password: "long-enough-password" } });
+    await app.inject({ method: "POST", url: "/auth/signup", payload: { acceptTerms: true, organizationName: "Other", name: "O", email: "o@other.org", password: "long-enough-password" } });
     expect(await events("signup_from_audit")).toHaveLength(1);
   });
 });
