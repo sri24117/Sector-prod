@@ -1,7 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "../../lib/api";
-import { AppShell, Field, Message, PageHead, Section, useGuard, type Me } from "../../lib/ui";
+import { hasFeature } from "@sector/shared/plans";
+import { AppShell, Field, Message, PageHead, PlanLocked, Section, useGuard, type Me } from "../../lib/ui";
 
 interface Asset { id: string; kind: string; title: string; body: string; status: string; beneficiaryRefs: string[] }
 interface Consent { id: string; subjectName: string; scope: string; revokedAt: string | null }
@@ -136,5 +137,5 @@ function Content({ me }: { me: Me }) {
 }
 
 export default function ContentPage() {
-  return <AppShell>{(me) => <Content me={me} />}</AppShell>;
+  return <AppShell>{(me) => hasFeature(me.plan, "content") ? <Content me={me} /> : <PlanLocked feature="content" title="Content" />}</AppShell>;
 }

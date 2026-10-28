@@ -3,16 +3,21 @@ import { z } from "zod";
 import { scopedDb } from "@sector/db";
 import { generate, NotConfiguredError, providerFromEnv, type LlmProvider } from "@sector/ai";
 import { authenticate, requireRole, logSecurityEvent } from "../auth/middleware.js";
+import { requireFeature } from "../auth/plan.js";
+import { CONTENT_ALLOWANCE, monthStartIst, normalizePlan } from "@sector/shared/plans";
 import { missingConsent, pseudonymize, restore, type AssetKind } from "../content/consent.js";
 
 // Slice 5: brand kit + consent records + content generation. The gate: an asset that names a beneficiary
 // cannot be EXPORTED without an active, sufficiently-scoped ConsentRecord for that person in THIS org.
 export async function registerContentRoutes(app: FastifyInstance, providerOverride?: LlmProvider): Promise<void> {
-  const write = [authenticate, requireRole(["owner", "staff"])];
+  // Every route here is part of the Starter plan and above; the monthly generation allowance is checked in /content/generate.
+  const plan = requireFeature("content");
+  const read = [authenticate, plan];
+  const write = [authenticate, requireRole(["owner", "staff"]), plan];
   const getProvider = () => providerOverride ?? providerFromEnv();
 
   // ---- Brand kit ----
-  app.get("/brand-kit", { preHandler: authenticate }, async (req, reply) => (await scopedDb(req.auth!.organizationId).brandKit.get()) ?? reply.status(404).send({ error: "not_found", message: "No brand kit yet." }));
+  app.get("/brand-kit", { preHandler: read }, async (req, reply) => (await scopedDb(req.auth!.organizationId).brandKit.get()) ?? reply.status(404).send({ error: "not_found", message: "No brand kit yet." }));
   app.put("/brand-kit", { preHandler: write }, async (req, reply) => {
     const p = z.object({ voice: z.string().min(10).max(4000), tokens: z.record(z.unknown()).optional() }).safeParse(req.body);
     if (!p.success) return reply.status(400).send({ error: "invalid_input", message: "voice (10+ characters) is required." });
@@ -27,7 +32,7 @@ export async function registerContentRoutes(app: FastifyInstance, providerOverri
     await logSecurityEvent({ organizationId: req.auth!.organizationId, userId: req.auth!.userId, action: "consent_recorded", result: "success", detail: row.id });
     return reply.status(201).send(row);
   });
-  app.get("/consents", { preHandler: authenticate }, async (req) => scopedDb(req.auth!.organizationId).consentRecords.list());
+  app.get("/consents", { preHandler: read }, async (req) => scopedDb(req.auth!.organizationId).consentRecords.list());
   app.post("/consents/:id/revoke", { preHandler: write }, async (req, reply) => {
     const row = await scopedDb(req.auth!.organizationId).consentRecords.revoke((req.params as { id: string }).id);
     if (!row) return reply.status(404).send({ error: "not_found", message: "Consent record not found." });
@@ -56,6 +61,11 @@ export async function registerContentRoutes(app: FastifyInstance, providerOverri
     try { provider = getProvider(); } catch (e) { if (e instanceof NotConfiguredError) return reply.status(501).send({ error: "not_yet_available", message: "Content generation is not enabled yet." }); throw e; }
 
     const [org, kit] = await Promise.all([db.organization.get(), db.brandKit.get()]);
+    // Check-then-act: two requests arriving together can both pass this check, so the cap can be exceeded by a draft or two. Only a stored draft counts, so a failed generation never uses the allowance.
+    const allowance = CONTENT_ALLOWANCE[normalizePlan(org!.plan)];
+    if (allowance !== null && (await db.contentAssets.countSince(monthStartIst())) >= allowance) {
+      return reply.status(429).send({ error: "content_allowance_reached", message: `Your plan includes ${allowance} generated pieces of content a month and you have used them. The allowance resets at the start of next month; contact SEctOr if you need more.` });
+    }
     const src = pseudonymize([`Topic: ${topic}`, "Facts:", ...facts.map((f) => `- ${f}`)].join("\n"), beneficiaries);
     const system = [
       `You write ${kind.replace("_", " ")} drafts for the NGO "${org!.name}".`,
@@ -74,8 +84,8 @@ export async function registerContentRoutes(app: FastifyInstance, providerOverri
     }
   });
 
-  app.get("/content", { preHandler: authenticate }, async (req) => scopedDb(req.auth!.organizationId).contentAssets.list());
-  app.get("/content/:id", { preHandler: authenticate }, async (req, reply) =>
+  app.get("/content", { preHandler: read }, async (req) => scopedDb(req.auth!.organizationId).contentAssets.list());
+  app.get("/content/:id", { preHandler: read }, async (req, reply) =>
     (await scopedDb(req.auth!.organizationId).contentAssets.findById((req.params as { id: string }).id)) ?? reply.status(404).send({ error: "not_found", message: "Asset not found." }));
 
   // Human approval is a required step before export: the residual risk (a name typed into free-text facts but not declared) can't be caught deterministically.

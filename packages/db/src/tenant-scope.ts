@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNull } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { rawDb, schema } from "./client.js";
 
@@ -156,6 +156,8 @@ export function scopedDb(organizationId: string) {
       findById: (assetId: string) =>
         rawDb.select().from(schema.contentAssets).where(and(eq(schema.contentAssets.id, assetId), eq(schema.contentAssets.organizationId, organizationId))).then((r) => r[0] ?? null),
       list: () => rawDb.select().from(schema.contentAssets).where(eq(schema.contentAssets.organizationId, organizationId)).orderBy(desc(schema.contentAssets.createdAt)),
+      countSince: (since: Date) => rawDb.select({ id: schema.contentAssets.id }).from(schema.contentAssets)
+        .where(and(eq(schema.contentAssets.organizationId, organizationId), gte(schema.contentAssets.createdAt, since))).then((r) => r.length),
       setStatus: (assetId: string, status: string) =>
         rawDb.update(schema.contentAssets).set({ status }).where(and(eq(schema.contentAssets.id, assetId), eq(schema.contentAssets.organizationId, organizationId))).returning().then((r) => r[0] ?? null),
     },

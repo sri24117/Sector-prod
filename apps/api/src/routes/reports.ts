@@ -3,6 +3,7 @@ import { z } from "zod";
 import { scopedDb } from "@sector/db";
 import { authenticate, requireRole, logSecurityEvent } from "../auth/middleware.js";
 import { normalizeUrl } from "./audit.js";
+import { requireFeature } from "../auth/plan.js";
 import { siteHost, instructions, wordpressMatches, metaTagMatches, dnsMatches } from "../lib/site-verification.js";
 
 // Full report (docs/superpowers/specs/2026-10-04-full-report-design.md):
@@ -11,7 +12,6 @@ import { siteHost, instructions, wordpressMatches, metaTagMatches, dnsMatches } 
 
 export interface ReportQueue { add(job: { reportId: string; organizationId: string }): Promise<void> }
 
-const PAID_PLANS = new Set(["pilot", "paid"]);
 const DAILY_LIMIT = 10;
 // Reports are self-contained HTML built by the worker: no scripts, only inline styles and data: images.
 const REPORT_CSP = "default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; sandbox";
@@ -60,10 +60,8 @@ export async function registerReportRoutes(app: FastifyInstance, queue: ReportQu
     return { verified: true, method, host: site.host };
   });
 
-  app.post("/reports", { preHandler: write, config: { rateLimit: { max: 20, timeWindow: "1 hour" } } }, async (req, reply) => {
+  app.post("/reports", { preHandler: [...write, requireFeature("full_report")], config: { rateLimit: { max: 20, timeWindow: "1 hour" } } }, async (req, reply) => {
     const auth = req.auth!; const db = scopedDb(auth.organizationId);
-    const org = await db.organization.get();
-    if (!org || !PAID_PLANS.has(org.plan)) return reply.status(403).send({ error: "plan_required", message: "The full report is part of the paid plan. Contact SEctOr to upgrade." });
     const site = await ownSite(auth.organizationId);
     const verification = await db.siteVerification.get();
     if (!site || !verification?.verifiedAt || verification.host !== site.host) {

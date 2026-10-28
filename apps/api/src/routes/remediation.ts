@@ -4,6 +4,7 @@ import { runAudit } from "@sector/crawler";
 import { verifyWordPressCredentials, applyJsonLdSchema, type WordPressCredentials } from "@sector/connectors";
 import { scopedDb } from "@sector/db";
 import { authenticate, requireRole, logSecurityEvent } from "../auth/middleware.js";
+import { requireFeature, denyUnlessFeature } from "../auth/plan.js";
 import { encryptJson, decryptJson } from "../lib/crypto.js";
 import { isSafePublicUrl } from "../lib/ssrf.js";
 import { normalizeUrl } from "./audit.js";
@@ -22,7 +23,7 @@ function credentialsMaySendTo(siteUrl: string): boolean {
 export async function registerRemediationRoutes(app: FastifyInstance): Promise<void> {
   const write = [authenticate, requireRole(["owner", "staff"])];
 
-  app.post("/connections/wordpress", { preHandler: write, config: { rateLimit: { max: 10, timeWindow: "10 minutes" } } }, async (request, reply) => {
+  app.post("/connections/wordpress", { preHandler: [...write, requireFeature("wordpress_fix")], config: { rateLimit: { max: 10, timeWindow: "10 minutes" } } }, async (request, reply) => {
     const auth = request.auth!;
     const parsed = z.object({ siteUrl: z.string().min(1), username: z.string().min(1), applicationPassword: z.string().min(1) }).safeParse(request.body);
     if (!parsed.success) return reply.status(400).send({ error: "invalid_input", message: "siteUrl, username and applicationPassword are required." });
@@ -69,6 +70,8 @@ export async function registerRemediationRoutes(app: FastifyInstance): Promise<v
       return { mode: "manual", package: pkg };
     }
 
+    // Manual fix packages (above) are open to every plan; changing a live site is Starter and above.
+    if (await denyUnlessFeature(request, reply, "wordpress_fix")) return reply;
     const conn = await db.platformConnections.get("wordpress");
     if (!conn) return reply.status(409).send({ error: "no_connection", message: "Connect your WordPress site first." });
 

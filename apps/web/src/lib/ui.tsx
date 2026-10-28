@@ -3,11 +3,12 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api, ApiError } from "./api";
 import { checkCopy, pointsFor } from "./checks";
+import { planRequiredMessage, type Feature } from "@sector/shared/plans";
 
 // Visual vocabulary lives in app/globals.css (docs/design/design-system.pdf).
 
 
-export interface Me { userId: string; email: string; name: string; role: "owner" | "staff" | "viewer"; organizationId: string; organizationName: string; plan: "free" | "pilot" | "paid"; websiteUrl: string | null }
+export interface Me { userId: string; email: string; name: string; role: "owner" | "staff" | "viewer"; organizationId: string; organizationName: string; plan: string; websiteUrl: string | null }
 
 const NAV = [
   { href: "/dashboard", label: "Overview" },
@@ -247,4 +248,17 @@ export function useGuard(setMsg: (m: string | null) => void, onError?: (e: ApiEr
 
 export function when(iso: string) {
   return new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+/** Shown instead of a page whose feature is not in the organization's plan. Names the plan needed. */
+export function PlanLocked({ feature, title }: { feature: Feature; title: string }) {
+  return (
+    <>
+      <PageHead title={title} />
+      <div className="prose stack-3" role="status">
+        <p>{planRequiredMessage(feature)}</p>
+        <p className="muted">Your audits and manual fix steps stay available on every plan.</p>
+      </div>
+    </>
+  );
 }

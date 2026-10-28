@@ -1,7 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "../../lib/api";
-import { AppShell, Field, Mark, Message, PageHead, Section, useGuard, type Me } from "../../lib/ui";
+import { hasFeature } from "@sector/shared/plans";
+import { AppShell, Field, Mark, Message, PageHead, PlanLocked, Section, useGuard, type Me } from "../../lib/ui";
 
 interface Alert { id: string; ruleId: string; metric: string; metricValue: string; threshold: string; message: string }
 
@@ -85,5 +86,5 @@ function AdGrants({ me }: { me: Me }) {
 }
 
 export default function AdGrantsPage() {
-  return <AppShell>{(me) => <AdGrants me={me} />}</AppShell>;
+  return <AppShell>{(me) => hasFeature(me.plan, "ad_grants") ? <AdGrants me={me} /> : <PlanLocked feature="ad_grants" title="Ad Grants" />}</AppShell>;
 }

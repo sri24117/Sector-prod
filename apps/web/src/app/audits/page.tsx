@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../lib/api";
+import { hasFeature, planRequiredMessage } from "@sector/shared/plans";
 import { AppShell, Field, FindingList, JourneySteps, Message, PageHead, RenderCaveat, Score, Section, ValueSummary, useGuard, when, type Me } from "../../lib/ui";
 import { FullReport } from "./FullReport";
 
@@ -11,6 +12,7 @@ interface Connection { siteUrl: string; status: string }
 
 function Audits({ me }: { me: Me }) {
   const canWrite = me.role !== "viewer";
+  const canFixLive = hasFeature(me.plan, "wordpress_fix"); // WordPress connect and the schema fix are Starter and above
   const [audits, setAudits] = useState<Audit[]>([]);
   const [open, setOpen] = useState<{ audit: Audit; findings: Finding[]; fresh: boolean } | null>(null);
   const [outcome, setOutcome] = useState<Record<string, Outcome>>({});
@@ -85,6 +87,7 @@ function Audits({ me }: { me: Me }) {
   function nextAction(findings: Finding[]) {
     if (!canWrite) return null;
     const schema = findings.find((f) => f.checkId === "schema" && !f.passed && !outcome[f.id]);
+    if (schema && !canFixLive) return null;
     if (schema && !conn) return <a className="btn" href="#wordpress">Connect WordPress</a>;
     if (schema && conn) return <button type="button" className="btn" disabled={busy === schema.id} onClick={() => fix(schema)}>{busy === schema.id ? "Applying fix…" : "Apply the first fix"}</button>;
     return null;
@@ -100,6 +103,7 @@ function Audits({ me }: { me: Me }) {
     }
     if (!canWrite) return null;
     const live = f.checkId === "schema";
+    if (live && !canFixLive) return <p className="small">{planRequiredMessage("wordpress_fix")}</p>;
     if (live && !conn) return <p className="small">Connect WordPress below to apply this fix directly, or <button type="button" className="btn-link" onClick={() => fix(f)}>show me how to fix this</button>.</p>;
     return (
       <button type="button" className={live ? "btn" : "btn btn-quiet"} disabled={busy === f.id} onClick={() => fix(f)}>
@@ -164,12 +168,14 @@ function Audits({ me }: { me: Me }) {
       </Section>
 
       <Section title="WordPress connection" id="wordpress">
-        {conn ? (
+        {!canFixLive ? (
+          <p className="muted prose">{planRequiredMessage("wordpress_fix")} Manual fix steps for each finding stay available on every plan.</p>
+        ) : conn ? (
           <p className="notice notice-ok"><span>Connected to <strong>{conn.siteUrl}</strong>. Structured-data fixes are applied directly to this site.</span></p>
         ) : (
           <p className="muted prose">Not connected. Connecting lets SEctOr apply structured-data fixes to your site and re-check them.</p>
         )}
-        {canWrite && (
+        {canWrite && canFixLive && (
           <form style={{ marginTop: "var(--s-5)", maxWidth: 480 }} onSubmit={(e) => { e.preventDefault(); void connect(); }}>
             <p className="small prose" style={{ marginBottom: "var(--s-4)" }}>
               Install the SEctOr Companion plugin on your site, then create an Application Password for a WordPress administrator

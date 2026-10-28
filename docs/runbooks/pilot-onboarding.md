@@ -2,7 +2,7 @@
 
 1. **Server setup (once):** `cp .env.example .env`; set `DATABASE_URL`, `POSTGRES_PASSWORD`, `CREDENTIAL_ENCRYPTION_KEY` (`openssl rand -base64 32` — losing it makes stored connections unreadable; back it up), leave `ALLOW_PRIVATE_TARGETS` unset. `pnpm install && pnpm db:migrate`. Start api, web, worker (+ Redis).
 2. **Signup:** NGO creates an account at `/signup` (FCRA/PAN/12A/80G are self-declared, unverified).
-3. **Billing:** ADR-0006 is still undecided — for the pilot, invoice manually (no billing code exists).
+3. **Billing and plan:** invoice manually (ADR-0006; no billing code). Tiers and prices are in `docs/product/product.md` "Pricing and plans". After the invoice is paid and you have checked the organization type, set the plan: `docker compose exec api npm run set-plan -- <organizationId> <free|starter|growth|pro>` (`--list` shows every organization). Growth and Pro are a founding-member waitlist that you assign by hand. The old names `pilot` and `paid` still work and mean `starter`, so existing organizations need no action. Locked features show the signed-in user which plan they need.
 4. **Audit:** `/audits` -> Run audit.
 5. **WordPress fixes:** install `plugins/wordpress/sector-companion` on the client's site (**staging first — never run on real WP yet**), have them create an Application Password, connect at `/audits`.
 6. **Ad Grants (only if FCRA is genuinely held):** verify the FCRA certificate yourself, then `docker compose exec api npm run confirm-fcra -- <organizationId>` (local dev: `pnpm --filter @sector/db confirm-fcra <organizationId>`). Live checks stay off until Google Ads API access is granted.
