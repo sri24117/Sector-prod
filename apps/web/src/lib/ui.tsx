@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useId, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api, ApiError } from "./api";
 import { checkCopy, pointsFor } from "./checks";
@@ -13,6 +13,7 @@ export interface Me { userId: string; email: string; name: string; role: "owner"
 const NAV = [
   { href: "/dashboard", label: "Overview" },
   { href: "/audits", label: "Audits" },
+  { href: "/calendar", label: "Calendar" },
   { href: "/ad-grants", label: "Ad Grants" },
   { href: "/content", label: "Content" },
 ];
@@ -67,7 +68,13 @@ export function Section({ title, children, id }: { title: string; children: Reac
 }
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
-  return <label className="field"><span className="field-label">{label}</span>{hint && <span className="field-hint">{hint}</span>}{children}</label>;
+  const generatedId = useId();
+  const child = isValidElement(children) ? children as ReactElement<{ id?: string; "aria-describedby"?: string }> : null;
+  const id = child?.props.id ?? generatedId;
+  return <div className="field"><label className="field-label" htmlFor={id}>{label}</label>
+    {hint && <span className="field-hint" id={`${id}-hint`}>{hint}</span>}
+    {child ? cloneElement(child, { id, "aria-describedby": hint ? `${id}-hint` : child.props["aria-describedby"] }) : children}
+  </div>;
 }
 
 /** Drawn marks, one stroke weight. Never the only signal: callers pair them with words. */
@@ -122,7 +129,7 @@ export function RenderCaveat() {
   return (
     <p className="small prose" style={{ marginTop: "var(--s-4)" }}>
       This audit reads the page as delivered, before any JavaScript runs. Sites that build their
-      content with JavaScript may score lower than they should.
+      content with JavaScript may score lower than they should. This is a heuristic readiness assessment, not proof of search rankings, AI citations, or donations. Review the evidence before acting.
     </p>
   );
 }
@@ -218,16 +225,15 @@ export function FindingList<T extends FindingLike>({ items, fix, autoFix }: { it
 /** Value summary card (spec section 3): what today is worth and what fixing would be worth. */
 export function ValueSummary({ score, items, children }: { score: number; items: FindingLike[]; children?: ReactNode }) {
   const failing = items.filter((f) => !f.passed);
-  const target = potentialScore(score, items);
   const autoFixable = failing.some((f) => f.checkId === "schema");
   return (
     <div className="card value-card">
       <p className="value-line">
         {failing.length === 0
           ? `${score} out of 100. Every check passes.`
-          : `${score} out of 100 today. Fixing ${failing.length === 1 ? "this one" : `these ${failing.length}`} could take you to ${target}.`}
+          : `${score} out of 100 on this assessment. Review ${failing.length} checks that need attention.`}
       </p>
-      {autoFixable && <p className="muted prose" style={{ marginTop: "var(--s-2)" }}>One of them we can fix for you automatically on WordPress.</p>}
+      {autoFixable && <p className="muted prose" style={{ marginTop: "var(--s-2)" }}>A supported WordPress change is available for review before applying.</p>}
       {children && <div className="actions">{children}</div>}
     </div>
   );

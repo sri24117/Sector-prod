@@ -146,7 +146,8 @@ Rs, quoted "+ GST" (exclusive of 18% GST).
 | Live WordPress fixes (connect + schema fix) | locked | yes | yes | yes |
 | Brand kit, consent records, generated content | locked | yes, 15 pieces a month | yes, no cap yet | yes, no cap yet |
 | Researcher (grants and tenders watchlist) | no | no | coming soon | coming soon |
-| Social planning: content calendar, ready-to-post drafts, assisted posting | no | no | coming soon | coming soon |
+| Manual content calendar: dates, channels, objectives, responsible person, linked draft and readiness | no | yes | yes | yes |
+| Automatic social publishing and advanced assisted posting | no | no | coming soon | coming soon |
 | Ad Grants monitoring (account link, compliance checks, alerts) | locked | locked | locked | yes |
 | Periodic human review by the SEctOr team | no | no | no | coming soon |
 
@@ -158,6 +159,7 @@ Rs, quoted "+ GST" (exclusive of 18% GST).
   platform approval clears. LinkedIn is included in Growth once its approval clears.
   No dates are promised. Social scheduling is promised only "as platform approvals clear".
 - The generated-content allowance is Starter 15 a month (calendar month, Asia/Kolkata).
+  Manual and generated drafts both use the existing piece allowance; edits and repeat downloads do not create extra pieces.
   **TODO (founder):** the Growth and Pro allowances are undecided until real AI cost is
   known. They are unset, meaning no cap, in the table; do not invent a number.
 - Legacy plan names `pilot` and `paid` are aliases for Starter, so existing
@@ -181,7 +183,7 @@ The seven sum to Rs 32,494 a month; Pro is about 32% off that.
 
 ### Coming soon (not built, or manual)
 
-Researcher, social planning, automatic posting, image generation (Skill 5) and the
+Researcher, automatic posting, image generation (Skill 5) and the
 human review. These are labelled "coming soon" and have no gating in code.
 
 ### Not built in this decision

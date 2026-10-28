@@ -31,7 +31,7 @@ export function FullReport({ me, website }: { me: Me; website: string | null }) 
       setVer(await api<Verification>("/site-verification"));
       await loadReports();
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Initial load is intentionally performed once.
   }, [paid, website]);
 
   // While a report is being prepared, check every 5 seconds.

@@ -1,3 +1,4 @@
+import { registerCalendarRoutes } from "./routes/calendar.js";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
@@ -46,6 +47,7 @@ export async function buildApp(opts: { logger?: boolean; adsGateway?: GoogleAdsG
   await registerRemediationRoutes(app);
   await registerAdGrantsRoutes(app, opts.adsGateway);
   await registerContentRoutes(app, opts.llmProvider);
+  await registerCalendarRoutes(app);
   await registerReportRoutes(app, opts.reportQueue ?? bullReportQueue());
   return app;
 }

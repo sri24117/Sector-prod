@@ -7,12 +7,14 @@ import { FullReport } from "./FullReport";
 
 interface Audit { id: string; url: string; score: number; createdAt: string }
 interface Finding { id: string; checkId: string; passed: boolean; detail: string }
-interface Outcome { mode: "applied" | "manual"; status?: string; beforeScore?: number; afterScore?: number; package?: { title: string; steps: string[] } }
+interface Outcome { remediationLogId?: string; mode: "applied" | "manual"; status?: string; beforeScore?: number; afterScore?: number; package?: { title: string; steps: string[] } }
+interface ChangeRecord { id: string; status: string; detail: string; payload?: { siteUrl?: string }; createdAt: string }
 interface Connection { siteUrl: string; status: string }
 
 function Audits({ me }: { me: Me }) {
   const canWrite = me.role !== "viewer";
   const canFixLive = hasFeature(me.plan, "wordpress_fix"); // WordPress connect and the schema fix are Starter and above
+  const [changes, setChanges] = useState<ChangeRecord[]>([]);
   const [audits, setAudits] = useState<Audit[]>([]);
   const [open, setOpen] = useState<{ audit: Audit; findings: Finding[]; fresh: boolean } | null>(null);
   const [outcome, setOutcome] = useState<Record<string, Outcome>>({});
@@ -22,11 +24,12 @@ function Audits({ me }: { me: Me }) {
   const [website, setWebsite] = useState<string | null>(me.websiteUrl);
   const [editSite, setEditSite] = useState(!me.websiteUrl);
   const [siteInput, setSiteInput] = useState(me.websiteUrl ?? "");
+  const [proposal, setProposal] = useState<{ id: string; siteUrl: string; previous: unknown; jsonLd: unknown; approvalToken: string } | null>(null);
   const [conn, setConn] = useState<Connection | null>(null);
   const [wp, setWp] = useState({ siteUrl: "", username: "", applicationPassword: "" });
   const guard = useGuard((m) => { setMsg(m); if (m) setOk(null); });
 
-  const load = useCallback(async () => setAudits(await api<Audit[]>("/audits")), []);
+  const load = useCallback(async () => { setAudits(await api<Audit[]>("/audits")); setChanges(await api<ChangeRecord[]>("/remediations")); }, []);
   useEffect(() => {
     // First visit after signup (/audits?first=1): run the first audit of the org website right away.
     const first = new URLSearchParams(window.location.search).get("first") === "1";
@@ -42,8 +45,9 @@ function Audits({ me }: { me: Me }) {
         setOpen({ audit: list[0], findings: r.findings, fresh: false });
       }
     });
+    api<ChangeRecord[]>("/remediations").then(setChanges).catch(() => undefined);
     api<Connection>("/connections/wordpress").then(setConn).catch(() => setConn(null));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Initial load is intentionally performed once.
   }, []);
 
   const show = (a: Audit) => guard(async () => {
@@ -74,10 +78,15 @@ function Audits({ me }: { me: Me }) {
       setWp({ siteUrl: "", username: "", applicationPassword: "" });
     } finally { setBusy(null); }
   });
-  const fix = (f: Finding) => guard(async () => {
+  const review = (f: Finding) => guard(async () => {
+    const p = await api<{ siteUrl: string; previous: unknown; jsonLd: unknown; approvalToken: string }>(`/findings/${f.id}/proposal`);
+    setProposal({ id: f.id, ...p });
+  });
+  const fix = (f: Finding, manual = false) => guard(async () => {
     setBusy(f.id);
     try {
-      const o = await api<Outcome>(`/findings/${f.id}/remediate`, { method: "POST" });
+      const o = await api<Outcome>(`/findings/${f.id}/remediate`, { method: "POST", body: { mode: manual ? "manual" : "apply", approvalToken: proposal?.approvalToken } });
+      setProposal(null);
       setOutcome((s) => ({ ...s, [f.id]: o }));
       await load();
     } finally { setBusy(null); }
@@ -89,14 +98,14 @@ function Audits({ me }: { me: Me }) {
     const schema = findings.find((f) => f.checkId === "schema" && !f.passed && !outcome[f.id]);
     if (schema && !canFixLive) return null;
     if (schema && !conn) return <a className="btn" href="#wordpress">Connect WordPress</a>;
-    if (schema && conn) return <button type="button" className="btn" disabled={busy === schema.id} onClick={() => fix(schema)}>{busy === schema.id ? "Applying fix…" : "Apply the first fix"}</button>;
+    if (schema && conn) return <button type="button" className="btn" disabled={busy === schema.id} onClick={() => review(schema)}>{busy === schema.id ? "Applying fix…" : "Review the first fix"}</button>;
     return null;
   }
 
   function fixFor(f: Finding) {
     const o = outcome[f.id];
     if (o?.mode === "applied") {
-      return <p className="notice notice-ok"><span>Fix applied ({o.status === "verified" ? "confirmed on re-check" : "not yet visible on re-check"}). Score {o.beforeScore} to {o.afterScore}.</span></p>;
+      return <div><p className="notice notice-ok"><span>{o.status === "restored" ? "Previous plugin value restored. Check your public page after refreshing any cache." : o.status === "verified" ? "Change saved and structured data detected on re-check." : "Change saved; public verification is incomplete. Check your site before applying anything else."}</span></p>{canWrite && o.remediationLogId && o.status !== "restored" && <button className="btn-link" onClick={() => { if (window.confirm(`Restore the previous Sector-managed schema on ${conn?.siteUrl}? This replaces the change just applied.`)) void guard(async () => { await api(`/remediations/${o.remediationLogId}/restore`, { method: "POST", body: { confirm: true } }); setOutcome((s) => ({ ...s, [f.id]: { ...o, status: "restored" } })); }); }}>Restore previous schema</button>}</div>;
     }
     if (o?.mode === "manual" && o.package) {
       return <div className="stack-2"><p className="finding-title">{o.package.title}</p><ol className="finding-steps">{o.package.steps.map((s) => <li key={s}>{s}</li>)}</ol></div>;
@@ -104,10 +113,10 @@ function Audits({ me }: { me: Me }) {
     if (!canWrite) return null;
     const live = f.checkId === "schema";
     if (live && !canFixLive) return <p className="small">{planRequiredMessage("wordpress_fix")}</p>;
-    if (live && !conn) return <p className="small">Connect WordPress below to apply this fix directly, or <button type="button" className="btn-link" onClick={() => fix(f)}>show me how to fix this</button>.</p>;
+    if (live && !conn) return <p className="small">Connect WordPress below to apply this fix directly, or <button type="button" className="btn-link" onClick={() => fix(f, true)}>show me how to fix this</button>.</p>;
     return (
-      <button type="button" className={live ? "btn" : "btn btn-quiet"} disabled={busy === f.id} onClick={() => fix(f)}>
-        {busy === f.id ? "Working…" : live ? "Apply fix to my WordPress site" : "Show me how to fix this"}
+      <button type="button" className={live ? "btn" : "btn btn-quiet"} disabled={busy === f.id} onClick={() => live ? review(f) : fix(f, true)}>
+        {busy === f.id ? "Working…" : live ? "Review fix for my WordPress site" : "Show me how to fix this"}
       </button>
     );
   }
@@ -118,6 +127,13 @@ function Audits({ me }: { me: Me }) {
       <PageHead title="Audits">Run an audit, see what needs attention, and fix it.</PageHead>
       <Message text={msg} />
       <Message text={ok} tone="ok" />
+      {proposal && <Section title="Review this website change" id="proposal">
+        <p>Target: <strong>{proposal.siteUrl}</strong>. Only the schema managed by the Sector Companion plugin will change. This does not guarantee search rankings.</p>
+        <details><summary>Previous value</summary><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify(proposal.previous, null, 2)}</pre></details>
+        <details open><summary>Proposed organization details</summary><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify(proposal.jsonLd, null, 2)}</pre></details>
+        <p className="small">The previous plugin value is recorded for restoration. Check for existing schema from SEO plugins before approving.</p>
+        <div className="actions"><button className="btn" disabled={busy === proposal.id} onClick={() => { const f = open?.findings.find((x) => x.id === proposal.id); if (f) void fix(f); }}>Approve and apply this change</button><button className="btn-link" onClick={() => setProposal(null)}>Cancel</button></div>
+      </Section>}
 
       {canWrite && (
         <Section title="Run an audit" id="run">
@@ -152,6 +168,9 @@ function Audits({ me }: { me: Me }) {
         </Section>
       )}
 
+      <Section title="Website change history" id="changes">
+        {changes.length === 0 ? <p className="muted">Approved changes and their verification outcomes appear here.</p> : <ul className="rows">{changes.map((change) => <li key={change.id} style={{ flexWrap: "wrap" }}><div className="row-main"><p>{change.status.replaceAll("_", " ")} · {when(change.createdAt)}</p><p className="small">{change.payload?.siteUrl ?? "Website change"} · {change.detail}</p></div>{canWrite && ["verified", "applied_unverified"].includes(change.status) && <button className="btn-link" onClick={() => { if (window.confirm(`Restore the previous Sector-managed schema on ${change.payload?.siteUrl}?`)) void guard(async () => { await api(`/remediations/${change.id}/restore`, { method: "POST", body: { confirm: true } }); setOk("Previous plugin value restored. Check the public page after refreshing cache."); await load(); }); }}>Restore previous schema</button>}</li>)}</ul>}
+      </Section>
       <FullReport me={me} website={website} />
 
       <Section title="History" id="history">

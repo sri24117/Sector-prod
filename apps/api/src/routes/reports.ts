@@ -67,11 +67,10 @@ export async function registerReportRoutes(app: FastifyInstance, queue: ReportQu
     if (!site || !verification?.verifiedAt || verification.host !== site.host) {
       return reply.status(403).send({ error: "site_not_verified", message: "Verify that you own your website first." });
     }
-    if ((await db.reports.activeCount()) > 0) return reply.status(409).send({ error: "report_in_progress", message: "A report is already being prepared. It usually takes a few minutes." });
-    if ((await db.reports.countSince(new Date(Date.now() - 86_400_000))) >= DAILY_LIMIT) {
-      return reply.status(429).send({ error: "daily_limit", message: `You can create up to ${DAILY_LIMIT} reports a day.` });
-    }
-    const report = await db.reports.create({ siteUrl: site.url, createdBy: auth.userId });
+    const admission = await db.reports.admit({ siteUrl: site.url, createdBy: auth.userId }, DAILY_LIMIT);
+    if (admission.error === "report_in_progress") return reply.status(409).send({ error: admission.error, message: "A report is already being prepared." });
+    if (admission.error === "daily_limit") return reply.status(429).send({ error: admission.error, message: `You can create up to ${DAILY_LIMIT} reports a day.` });
+    const report = admission.report!;
     try {
       await queue.add({ reportId: report.id, organizationId: auth.organizationId });
     } catch (err) {
@@ -97,7 +96,7 @@ export async function registerReportRoutes(app: FastifyInstance, queue: ReportQu
     const row = await scopedDb(req.auth!.organizationId).reports.pdf((req.params as { id: string }).id);
     if (!row?.pdf) return reply.status(404).send({ error: "not_found", message: "Report not found." });
     let host = "site"; try { host = siteHost(row.siteUrl); } catch { /* keep default */ }
-    const name = `sector-report-${host}-${row.createdAt.toISOString().slice(0, 10)}.pdf`.replace(/[^a-zA-Z0-9.\-]/g, "-");
+    const name = `sector-report-${host}-${row.createdAt.toISOString().slice(0, 10)}.pdf`.replace(/[^a-zA-Z0-9.-]/g, "-");
     return reply.header("content-disposition", `attachment; filename="${name}"`).header("cache-control", "private, no-store").type("application/pdf").send(row.pdf);
   });
 }
