@@ -233,6 +233,8 @@ export const contentAssets = pgTable("content_assets", {
   body: text("body").notNull(), beneficiaryRefs: jsonb("beneficiary_refs").$type<string[]>().notNull().default([]),
   status: text("status").notNull().default("draft"), createdBy: text("created_by").notNull(),
   model: text("model"), createdAt: created(),
+  revision: integer("revision").notNull().default(1),
+  facts: jsonb("facts").$type<string[]>().notNull().default([]),
 }, (t) => [index("content_org_idx").on(t.organizationId)]);
 
 // ---------------- Full report (docs/superpowers/specs/2026-10-04-full-report-design.md) ----------------
@@ -251,3 +253,12 @@ export const reports = pgTable("reports", {
   createdBy: text("created_by").notNull(), createdAt: created(),
   finishedAt: timestamp("finished_at", { withTimezone: true }),
 }, (t) => [index("reports_org_created_idx").on(t.organizationId, t.createdAt)]);
+
+// Starter calendar plans manual posting; no scheduler or publication claims.
+export const calendarItems = pgTable("calendar_items", {
+  id: id(), organizationId: orgRef(),
+  contentAssetId: text("content_asset_id").notNull().references(() => contentAssets.id, { onDelete: "cascade" }),
+  date: text("date").notNull(), channel: text("channel").notNull(),
+  objective: text("objective").notNull(), assignee: text("assignee").notNull(),
+  createdAt: created(),
+}, (t) => [index("calendar_org_date_idx").on(t.organizationId, t.date)]);

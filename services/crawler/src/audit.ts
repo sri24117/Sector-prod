@@ -53,7 +53,13 @@ function checkSchema($: cheerio.CheerioAPI): CheckResult {
   scripts.each((_, el) => {
     try {
       const json = JSON.parse($(el).text());
-      const types = Array.isArray(json) ? json.map((j) => j["@type"]) : [json["@type"]];
+      const documents: Record<string, unknown>[] = [];
+      const walk = (value: unknown): void => {
+        if (Array.isArray(value)) value.forEach(walk);
+        else if (value && typeof value === "object") { const doc = value as Record<string, unknown>; documents.push(doc); if (doc["@graph"]) walk(doc["@graph"]); }
+      };
+      walk(json);
+      const types = documents.map((doc) => doc["@type"]);
       const flat = types.flat().filter(Boolean).map(String);
       if (
         flat.some((t) =>
@@ -76,14 +82,45 @@ function checkSchema($: cheerio.CheerioAPI): CheckResult {
   };
 }
 
+
+/** Whether the most specific robots group disallows the homepage. It does not
+ * describe training rights, all subpaths, or search rankings. */
+export function robotsBlocksRoot(text: string, token: string): boolean {
+  const groups: { agents: string[]; rules: { allow: boolean; path: string }[] }[] = [];
+  let group = { agents: [] as string[], rules: [] as { allow: boolean; path: string }[] };
+  let rulesStarted = false;
+  for (const line of text.split(/\r?\n/)) {
+    const clean = line.split("#")[0]!.trim();
+    const match = /^([\w-]+)\s*:\s*(.*)$/.exec(clean);
+    if (!match) continue;
+    const key = match[1]!.toLowerCase(), value = match[2]!.trim();
+    if (key === "user-agent") {
+      if (rulesStarted) { groups.push(group); group = { agents: [], rules: [] }; rulesStarted = false; }
+      group.agents.push(value.toLowerCase());
+    } else if ((key === "allow" || key === "disallow") && group.agents.length) {
+      rulesStarted = true;
+      if (value) group.rules.push({ allow: key === "allow", path: value });
+    }
+  }
+  groups.push(group);
+  const specificity = (agent: string) => agent === "*" ? 0 : token.toLowerCase().includes(agent) ? agent.length : -1;
+  const best = Math.max(-1, ...groups.flatMap((g) => g.agents.map(specificity)));
+  if (best < 0) return false;
+  const matching = groups.filter((g) => g.agents.some((a) => specificity(a) === best));
+  const rules = matching.flatMap((g) => g.rules).filter((r) => {
+    const anchored = r.path.endsWith("$");
+    const pattern = (anchored ? r.path.slice(0, -1) : r.path).split("*").map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*");
+    return new RegExp("^" + pattern + (anchored ? "$" : "")).test("/");
+  });
+  rules.sort((a, b) => b.path.replace(/[*$]/g, "").length - a.path.replace(/[*$]/g, "").length || Number(b.allow) - Number(a.allow));
+  return rules[0]?.allow === false;
+}
+
 async function checkRobotsTxt(baseUrl: string, net: Net): Promise<CheckResult> {
   try {
     const robotsUrl = new URL("/robots.txt", baseUrl).toString();
     const text = await fetchText(robotsUrl, net);
-    const blocked = AI_CRAWLER_UA_TOKENS.filter((token) => {
-      const re = new RegExp(`User-agent:\\s*${token}[\\s\\S]*?Disallow:\\s*/(?!\\S)`, "i");
-      return re.test(text);
-    });
+    const blocked = AI_CRAWLER_UA_TOKENS.filter((token) => robotsBlocksRoot(text, token));
     return {
       checkId: "robots_txt_ai_block",
       weight: 15,
@@ -93,13 +130,14 @@ async function checkRobotsTxt(baseUrl: string, net: Net): Promise<CheckResult> {
           ? "No AI crawlers blocked in robots.txt"
           : `Blocks: ${blocked.join(", ")}`,
     };
-  } catch {
-    // no robots.txt at all = nothing is blocked = check passes
+  } catch (error) {
+    const absent = error instanceof Error && /HTTP (404|410)$/.test(error.message);
+    // A missing resource is different from a server/network failure.
     return {
       checkId: "robots_txt_ai_block",
       weight: 15,
-      passed: true,
-      detail: "No robots.txt found (nothing blocked)",
+      passed: absent,
+      detail: absent ? "No robots.txt found (no declared restrictions)" : "Could not read robots.txt; crawler access is unknown.",
     };
   }
 }
@@ -111,8 +149,9 @@ async function checkLlmsTxt(baseUrl: string, net: Net): Promise<CheckResult> {
   try {
     const llmsUrl = new URL("/llms.txt", baseUrl).toString();
     const res = await request(llmsUrl, { headers: { "user-agent": UA }, dispatcher: net.dispatcher, signal: net.signal });
-    await res.body.dump({ limit: MAX_TEXT_BYTES });
-    const passed = res.statusCode === 200;
+    const { text } = await readCapped(res.body, MAX_TEXT_BYTES);
+    const contentType = String(res.headers["content-type"] ?? "");
+    const passed = res.statusCode === 200 && !/html/i.test(contentType) && !/<(?:!doctype|html|body)\b/i.test(text) && /^#\s+\S/m.test(text);
     return {
       checkId: "llms_txt",
       weight: 5,
@@ -230,6 +269,10 @@ export async function runAudit(startUrl: string, opts: RunAuditOptions = {}): Pr
     await res.body.dump();
     if (hop >= MAX_REDIRECTS) throw new Error(`Too many redirects from ${startUrl}`);
     url = new URL(location, url).toString();
+  }
+  if (res.statusCode < 200 || res.statusCode >= 300) {
+    await res.body.dump();
+    throw new Error(`Homepage returned HTTP ${res.statusCode}; no assessment was produced.`);
   }
   const { text: html } = await readCapped(res.body, MAX_HTML_BYTES);
   const $ = cheerio.load(html);

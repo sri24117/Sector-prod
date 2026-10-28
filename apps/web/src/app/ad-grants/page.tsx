@@ -19,7 +19,7 @@ function AdGrants({ me }: { me: Me }) {
     return false;
   });
   const load = useCallback(async () => setAlerts(await api<Alert[]>("/ad-grants/alerts")), []);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Initial load is intentionally performed once.
   useEffect(() => { void guard(load); }, []);
 
   const act = (key: string, fn: () => Promise<void>) => guard(async () => { setBusy(key); try { await fn(); } finally { setBusy(null); } });

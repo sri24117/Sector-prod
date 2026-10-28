@@ -70,10 +70,10 @@ describe("public /audit limits", () => {
   it("answers busy instead of queueing when every audit slot is taken", async () => {
     process.env.AUDIT_CONCURRENCY = "1";
     let release!: () => void;
-    vi.mocked(runAudit).mockImplementationOnce(() => new Promise((r) => { release = () => r({ url: "https://example.org/", score: 1, runAt: new Date().toISOString(), checks: [] }); }));
-    const first = app.inject({ method: "POST", url: "/audit", payload: { url: "https://example.org" }, remoteAddress: "198.51.100.251" });
+    vi.mocked(runAudit).mockImplementationOnce(() => new Promise((r) => { release = () => r({ url: "https://1.1.1.1/", score: 1, runAt: new Date().toISOString(), checks: [] }); }));
+    const first = app.inject({ method: "POST", url: "/audit", payload: { url: "https://1.1.1.1" }, remoteAddress: "198.51.100.251" }).then((response) => response);
     await vi.waitFor(() => expect(runAudit).toHaveBeenCalledTimes(1));
-    const second = await app.inject({ method: "POST", url: "/audit", payload: { url: "https://example.org" }, remoteAddress: "198.51.100.252" });
+    const second = await app.inject({ method: "POST", url: "/audit", payload: { url: "https://1.1.1.1" }, remoteAddress: "198.51.100.252" });
     expect(second.statusCode).toBe(503);
     expect(second.json().error).toBe("busy");
     release();

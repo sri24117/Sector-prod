@@ -78,10 +78,12 @@ ul.plain{padding-left:20px}a{color:var(--pine)}.where{font-size:13px;color:var(-
 <p class="small">SEctOr full report · ${esc(date)}</p>
 <h1>${esc(d.organizationName)}</h1>
 <p class="muted">${esc(d.siteUrl)} · ${d.pages.length} page${d.pages.length === 1 ? "" : "s"} checked</p>
-${score !== null ? `<div style="margin-top:32px"><div class="big">${score}</div><div class="rule"></div><p class="muted">out of 100 overall</p></div>` : `<p class="muted">The speed and accessibility test could not run this time; the rest of the report is complete.</p>`}
+${score !== null ? `<div style="margin-top:32px"><div class="big">${score}</div><div class="rule"></div><p class="muted">out of 100 · technical summary</p></div>` : `<p class="muted">The speed and accessibility test could not run this time; the rest of the report is complete.</p>`}
 ${lh ? `<div class="areas">${(Object.keys(AREA) as (keyof typeof AREA)[]).map((k) => `<div class="card area"><p class="small">${AREA[k]}</p><div class="num">${lh.scores[k]}</div><p class="small">${verdict(lh.scores[k])}</p></div>`).join("")}</div>` : ""}
 ${wins.length ? `<div class="card" style="margin-top:24px"><h3 style="margin-top:0">Your three biggest wins</h3><ol>${wins.map((a) => `<li><strong>${esc(a.title)}</strong>: ${esc(a.why)}</li>`).join("")}</ol></div>` : ""}
 </header>
+
+<section><h2>Scope and limitations</h2><p>This report checks website readiness. The technical summary averages the homepage Lighthouse categories; it does not measure rankings, AI citations, donor confidence or donations. Review findings with your team before making changes.</p><p>Search performance: not connected. Donor readiness: not assessed.</p></section>
 
 <section><h2>Summary</h2>${summary(d, actions).map((s) => `<p>${esc(s)}</p>`).join("")}</section>
 
