@@ -55,10 +55,6 @@ export const users = pgTable("users", {
   termsVersion: text("terms_version"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  // When this person accepted the Terms of Service and Privacy Policy at signup, and which version
-  // (apps/api/src/lib/legal.ts). Null for accounts created before acceptance was recorded.
-  termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
-  termsVersion: text("terms_version"),
 });
 
 // Phase 0-1 simplification (named, not silent): one membership per user.
