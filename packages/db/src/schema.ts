@@ -1,5 +1,5 @@
-import { pgTable, pgEnum, text, boolean, timestamp, uniqueIndex, index, integer, jsonb, customType } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { pgTable, pgEnum, text, boolean, timestamp, uniqueIndex, index, integer, jsonb, customType, check } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
 
 // Ported from the original Prisma schema (see ADR-0002 addendum for why).
 // Same scope: Slice 2 (org onboarding + auth) plus the auth infrastructure
@@ -258,6 +258,53 @@ export const reports = pgTable("reports", {
   finishedAt: timestamp("finished_at", { withTimezone: true }),
 }, (t) => [index("reports_org_created_idx").on(t.organizationId, t.createdAt)]);
 
+// ---------------- Research audit (docs/superpowers/specs/2026-10-13-research-audit-design.md) ----------------
+// The owner's curated library of proven organizations. Global (not organization-owned): written only by the
+// owner's import script, read-only for the product.
+export const referenceSources = pgTable("reference_sources", {
+  id: id(), name: text("name").notNull(),
+  orgType: text("org_type").notNull(), // ngo | foundation | csr
+  cause: text("cause"), region: text("region"), url: text("url").notNull(),
+  retrievedOn: timestamp("retrieved_on", { withTimezone: true }).notNull(),
+  strengths: jsonb("strengths").notNull(), // { seo?: string[], aio?: string[], uiux?: string[], brand?: string[] }
+  createdAt: created(),
+});
+
+export const researchAudits = pgTable("research_audits", {
+  id: id(), organizationId: orgRef(), siteUrl: text("site_url").notNull(), platform: text("platform"),
+  status: text("status").notNull().default("queued"), // queued | running | in_review | released | failed
+  error: text("error"),
+  seoScore: integer("seo_score"), aioScore: integer("aio_score"), uiuxScore: integer("uiux_score"), brandScore: integer("brand_score"), overallScore: integer("overall_score"),
+  layerWeights: jsonb("layer_weights"), pillarWeights: jsonb("pillar_weights"), summary: jsonb("summary"),
+  createdBy: text("created_by").notNull(), createdAt: created(),
+  releasedAt: timestamp("released_at", { withTimezone: true }),
+}, (t) => [
+  index("research_audits_org_created_idx").on(t.organizationId, t.createdAt),
+  check("research_audits_status_ck", sql`${t.status} in ('queued','running','in_review','released','failed')`),
+]);
+
+export const researchFindings = pgTable("research_findings", {
+  id: id(), auditId: text("audit_id").notNull().references(() => researchAudits.id, { onDelete: "cascade" }), organizationId: orgRef(),
+  pillar: text("pillar").notNull(), layer: text("layer").notNull(), checkId: text("check_id").notNull(),
+  result: text("result").notNull(), evidence: text("evidence"),
+  sourceId: text("source_id").references(() => referenceSources.id, { onDelete: "set null" }),
+  sourceUrl: text("source_url"), sourceName: text("source_name"),
+  fix: text("fix"), effort: text("effort"), points: integer("points").notNull().default(0),
+}, (t) => [
+  index("research_findings_audit_idx").on(t.auditId),
+  check("research_findings_pillar_ck", sql`${t.pillar} in ('seo','aio','uiux','brand')`),
+  check("research_findings_layer_ck", sql`${t.layer} in ('rules','reference','peer')`),
+  check("research_findings_result_ck", sql`${t.result} in ('pass','fail','could_not_check')`),
+  // Honesty rule: a benchmark comparison must cite a source.
+  check("research_findings_source_ck", sql`${t.layer} = 'rules' or ${t.sourceUrl} is not null`),
+]);
+
+// The owner's overrides. The original AI output is never overwritten; every change is recorded here.
+export const reviewEdits = pgTable("review_edits", {
+  id: id(), auditId: text("audit_id").notNull().references(() => researchAudits.id, { onDelete: "cascade" }), organizationId: orgRef(),
+  target: text("target").notNull(), oldValue: jsonb("old_value"), newValue: jsonb("new_value"),
+  note: text("note").notNull(), createdAt: created(),
+}, (t) => [index("review_edits_audit_idx").on(t.auditId)]);
 // Starter calendar plans manual posting; no scheduler or publication claims.
 export const calendarItems = pgTable("calendar_items", {
   id: id(), organizationId: orgRef(),
