@@ -14,7 +14,7 @@ const EMAIL = "reset@hope.org";
 
 beforeAll(async () => {
   app = await buildApp(); await app.ready();
-  const res = await app.inject({ method: "POST", url: "/auth/signup", payload: { organizationName: "Reset NGO", name: "R", email: EMAIL, password: "original-password-1" } });
+  const res = await app.inject({ method: "POST", url: "/auth/signup", payload: { acceptTerms: true, organizationName: "Reset NGO", name: "R", email: EMAIL, password: "original-password-1" } });
   expect(res.statusCode).toBe(201);
   userId = res.json().userId;
 });

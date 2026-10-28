@@ -7,6 +7,7 @@ import { generateSessionToken, hashSessionToken, sessionExpiry, setSessionCookie
 import { authenticate, logSecurityEvent } from "../auth/middleware.js";
 import { consumeResetToken } from "../auth/password-reset.js";
 import { recordFunnelEvent } from "../lib/funnel.js";
+import { LEGAL_VERSION } from "../lib/legal.js";
 
 // Slice 2 — see docs/plans/phase-0-1-roadmap.md and the ADR-0002/ADR-0005
 // confirmations in conversation history. Signup self-declares FCRA/PAN/
@@ -27,6 +28,8 @@ const SignupSchema = z.object({
   websiteUrl: z.string().url().optional(),
   // Self-declared; ops read it before granting a paid plan (full report spec, access rules).
   orgType: z.enum(["ngo", "csr", "foundation", "social_enterprise"]).optional(),
+  // Must be true: the signup form's "I agree to the Terms of Service and Privacy Policy" box.
+  acceptTerms: z.boolean().optional(),
   // Set by the web app when the visitor arrived from a free audit (funnel measurement only).
   fromAudit: z.boolean().optional(),
 });
@@ -63,6 +66,10 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
         });
       }
       const input = parsed.data;
+      // Enforced here, not only by the form's required checkbox. Time and version are set by the server.
+      if (input.acceptTerms !== true) {
+        return reply.status(400).send({ error: "terms_not_accepted", message: "Agree to the Terms of Service and Privacy Policy to create an account." });
+      }
 
       try {
         const result = await rawDb.transaction(async (tx: Parameters<Parameters<typeof rawDb.transaction>[0]>[0]) => {
@@ -70,7 +77,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
 
           const [user] = await tx
             .insert(schema.users)
-            .values({ email: input.email.toLowerCase(), passwordHash, name: input.name })
+            .values({ email: input.email.toLowerCase(), passwordHash, name: input.name, termsAcceptedAt: new Date(), termsVersion: LEGAL_VERSION })
             .returning();
 
           const [org] = await tx

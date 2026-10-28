@@ -49,6 +49,10 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
+  // When this person accepted the Terms of Service and Privacy Policy at signup, and which version
+  // (apps/api/src/lib/legal.ts). Null for accounts created before acceptance was recorded.
+  termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+  termsVersion: text("terms_version"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   // When this person accepted the Terms of Service and Privacy Policy at signup, and which version
