@@ -1,6 +1,7 @@
 import "../env.js";
 import { and, eq, gt, sql } from "drizzle-orm";
 import { rawDb, pool, schema } from "@sector/db";
+import { normalizePlan } from "@sector/shared/plans";
 
 // INTERNAL OPS ONLY. Phase 0-1 Goal #1: does the free audit convert to next steps?
 //   pnpm --filter @sector/api funnel [days=30]
@@ -39,10 +40,11 @@ const attempted = await one(`select count(*) n from remediation_logs where platf
 const verified = await one(`select count(*) n from remediation_logs where status = 'verified' and organization_id in (${real})`);
 const delta = (await pool.query(`select round(avg(after_score - before_score), 1) d from remediation_logs where status = 'verified' and before_score is not null and after_score is not null and organization_id in (${real})`)).rows[0]?.d;
 const plans = (await pool.query(`select plan, count(*)::int n from organizations where id in (${real}) group by plan order by plan`)).rows as { plan: string; n: number }[];
-const plan = (p: string) => plans.find((r) => r.plan === p)?.n ?? 0;
+// Legacy pilot/paid count as starter, matching what the app enforces.
+const plan = (p: string) => plans.filter((r) => normalizePlan(r.plan) === p).reduce((s, r) => s + r.n, 0);
 console.log(`\nPilot, all time (${orgs} organizations, demo excluded)`);
 console.log(`  audited / connected WordPress   ${audited} / ${connected}  connect rate ${pct(connected, audited)}`);
 console.log(`  fixes verified / attempted      ${verified} / ${attempted}  ${pct(verified, attempted)}`);
 console.log(`  average score change per fix    ${delta == null ? "n/a (no verified fixes yet)" : `${Number(delta) > 0 ? "+" : ""}${delta} points`}`);
-console.log(`  plans                           paid ${plan("paid")}, pilot ${plan("pilot")}, free ${plan("free")}`);
+console.log(`  plans                           free ${plan("free")}, starter ${plan("starter")}, growth ${plan("growth")}, pro ${plan("pro")}`);
 await pool.end();

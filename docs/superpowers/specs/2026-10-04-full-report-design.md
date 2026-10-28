@@ -12,11 +12,11 @@ Paid and pilot organizations (NGOs, CSR teams, foundations, social enterprises) 
 |---|---|---|---|
 | Anyone | yes, unchanged | no | no |
 | Signed-in organization, `free` plan | yes | own profile website only | locked card |
-| `pilot` / `paid`, website **not verified** | yes | own website only | verification card |
-| `pilot` / `paid`, website **verified** | yes | own website only | **create, view, download** |
+| paid plan (`starter` and up; legacy `pilot` / `paid`), website **not verified** | yes | own website only | verification card |
+| paid plan (`starter` and up; legacy `pilot` / `paid`), website **verified** | yes | own website only | **create, view, download** |
 
 - **In-app audits are limited to the organization's own website** (profile `websiteUrl`). The API no longer accepts an arbitrary `url` from signed-in users. This removes "audit any site" from accounts without breaking the first-audit-after-signup flow.
-- **Plans:** `organizations.plan` is `free`, `pilot` or `paid`, default `free`. Ops set it after invoicing with `npm run set-plan -- <orgId> <plan>`. There is no payment code, matching the manual-invoicing decision in ADR-0006.
+- **Plans:** `organizations.plan` is `free`, `starter`, `growth` or `pro`, default `free` (legacy `pilot` and `paid` count as `starter`; tiers: `docs/product/product.md` "Pricing and plans"). Ops set it after invoicing with `npm run set-plan -- <orgId> <plan>`. There is no payment code, matching the manual-invoicing decision in ADR-0006.
 - **Organization type:** signup adds a required "Organization type" (NGO / Trust / Section 8, CSR team, Foundation, Social enterprise), stored on `organization_profiles.org_type`. `set-plan` prints it so ops confirm eligibility before upgrading anyone.
 
 ## Website ownership verification
@@ -31,7 +31,7 @@ All fetches go through the existing SSRF guard. Changing the profile website res
 
 ## The report
 
-Created with `POST /reports` (owner or staff; plan `pilot`/`paid`; website verified; at most one report queued or running per org, and 10 per org per day). It runs on the BullMQ queue `report` in the existing worker, **one at a time**, with a hard limit of 8 minutes per report (a typical slow NGO site takes about 2 minutes). A report that never finished stops blocking new ones after 15 minutes.
+Created with `POST /reports` (owner or staff; plan `starter` or above (legacy `pilot`/`paid` included); website verified; at most one report queued or running per org, and 10 per org per day (no monthly report count)). It runs on the BullMQ queue `report` in the existing worker, **one at a time**, with a hard limit of 8 minutes per report (a typical slow NGO site takes about 2 minutes). A report that never finished stops blocking new ones after 15 minutes.
 
 1. **Crawl:** Playwright (Chromium) loads the homepage and follows same-site links breadth-first, up to **20 pages**, 3 pages at a time, with a 15-second timeout per page (30 seconds and one retry for the homepage, since slow shared hosting is common). A 3-minute crawl budget is a safety net only. It uses a small built-in crawler rather than Crawlee, which keeps the worker lean.
 2. **Per page:** title, meta description, canonical, `h1`/`h2` counts, structured-data types, image alt coverage, word count, status code, and broken internal links found.

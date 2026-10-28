@@ -21,6 +21,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./net-guard": "./src/net-guard.ts"
+    "./net-guard": "./src/net-guard.ts",
+    "./plans": "./src/plans.ts"
   }
 }

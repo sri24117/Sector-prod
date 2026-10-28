@@ -13,6 +13,7 @@ let app: FastifyInstance;
 const call = (cookie: string, method: "GET" | "POST" | "PUT", url: string, payload?: unknown) => app.inject({ method, url, headers: { cookie }, payload: payload as never });
 async function signup(name: string, email: string) {
   const r = await app.inject({ method: "POST", url: "/auth/signup", payload: { organizationName: name, name: "O", email, password: "long-enough-password" } });
+  await rawDb.update(schema.organizations).set({ plan: "starter" }).where(eq(schema.organizations.id, r.json().organizationId)); // content is Starter and above
   const c = r.cookies.find((x) => x.name === "sector_session")!; return { cookie: `${c.name}=${c.value}`, userId: r.json().userId as string };
 }
 const gen = (cookie: string, extra: object = {}) => call(cookie, "POST", "/content/generate", { kind: "case_study", topic: "Asha's story", facts: ["Asha Devi joined our tailoring program in 2024", "She now earns a stable income"], beneficiaries: ["Asha Devi"], ...extra });

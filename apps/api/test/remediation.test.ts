@@ -14,6 +14,7 @@ async function signup(name: string, email: string, websiteUrl?: string) {
   const res = await app.inject({ method: "POST", url: "/auth/signup", payload: { organizationName: name, name: "Owner", email, password: "long-enough-password", websiteUrl } });
   expect(res.statusCode).toBe(201);
   const c = res.cookies.find((x) => x.name === "sector_session")!;
+  await rawDb.update(schema.organizations).set({ plan: "starter" }).where(eq(schema.organizations.id, res.json().organizationId)); // live fixes are Starter and above
   return { cookie: `${c.name}=${c.value}`, orgId: res.json().organizationId as string, userId: res.json().userId as string };
 }
 const call = (cookie: string, method: "GET" | "POST", url: string, payload?: unknown) =>
