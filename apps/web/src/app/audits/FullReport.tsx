@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { api, API_URL } from "../../lib/api";
+import { hasFeature, planRequiredMessage } from "@sector/shared/plans";
 import { GOOD_SCORE, Mark, Message, Section, useGuard, when, type Me } from "../../lib/ui";
 
 // Paid full report (spec 2026-10-04-full-report-design.md): locked on the free plan,
@@ -14,7 +15,7 @@ const METHOD_LABEL: Record<string, string> = { wordpress: "your WordPress connec
 
 export function FullReport({ me, website }: { me: Me; website: string | null }) {
   const canWrite = me.role !== "viewer";
-  const paid = me.plan === "pilot" || me.plan === "paid";
+  const paid = hasFeature(me.plan, "full_report");
   const [ver, setVer] = useState<Verification | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [busy, setBusy] = useState<"check" | "create" | null>(null);
@@ -30,7 +31,7 @@ export function FullReport({ me, website }: { me: Me; website: string | null }) 
       setVer(await api<Verification>("/site-verification"));
       await loadReports();
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Initial load is intentionally performed once.
   }, [paid, website]);
 
   // While a report is being prepared, check every 5 seconds.
@@ -74,8 +75,8 @@ export function FullReport({ me, website }: { me: Me; website: string | null }) 
             Up to 20 pages checked for search, speed, accessibility and how your links look when shared on WhatsApp,
             LinkedIn and Facebook. You get a plain action plan and a PDF to share with your team or web person.
           </p>
-          <p className="chips" style={{ marginTop: "var(--s-4)" }}><span className="chip">Paid plan</span><span className="chip">Your own website only</span></p>
-          <p className="muted prose" style={{ marginTop: "var(--s-4)" }}>The full report is part of the paid plan. Ask SEctOr to upgrade your organization.</p>
+          <p className="chips" style={{ marginTop: "var(--s-4)" }}><span className="chip">Starter plan and above</span><span className="chip">Your own website only</span></p>
+          <p className="muted prose" style={{ marginTop: "var(--s-4)" }}>{planRequiredMessage("full_report")}</p>
           <div className="actions"><a className="btn btn-quiet" href="/sample-full-report.pdf" target="_blank" rel="noopener">See a sample report (PDF)</a></div>
         </div>
       </Section>

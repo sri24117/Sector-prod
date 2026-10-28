@@ -45,8 +45,7 @@ ADR-0006 is still open. For 0→5 NGOs specifically:
 - [ ] If manual: add a `billingStatus` enum to `Organization`
       (`trial`/`invoiced`/`paid`/`overdue`), set by you, not a webhook.
       Small, fast, not built yet.
-- [ ] Actually decide a price. Nothing is drafted anywhere in this repo —
-      genuine open gap, not an oversight.
+- [x] Price decided (founder, 2026-10-28): `docs/product/product.md` "Pricing and plans".
 
 ## Phase 3 — Infrastructure (BLOCKING, can run in parallel with Phase 1/2)
 

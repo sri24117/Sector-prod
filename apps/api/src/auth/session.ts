@@ -1,5 +1,6 @@
 import { randomBytes, createHash } from "node:crypto";
 import type { FastifyReply } from "fastify";
+import { servedOverHttps } from "../lib/https.js";
 
 // Server-side sessions per ADR-0005 (chosen over short-lived JWTs — no
 // token-refresh flow to build, no client-side JWT storage/XSS surface).
@@ -26,7 +27,7 @@ export function sessionExpiry(): Date {
 export function setSessionCookie(reply: FastifyReply, token: string): void {
   reply.setCookie(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: servedOverHttps(), // from APP_URL's scheme, never NODE_ENV (see lib/https.ts)
     sameSite: "lax", // web and api are same-site (shared registrable domain / localhost) — see auth route comments
     path: "/",
     maxAge: SESSION_TTL_MS / 1000,
@@ -34,5 +35,5 @@ export function setSessionCookie(reply: FastifyReply, token: string): void {
 }
 
 export function clearSessionCookie(reply: FastifyReply): void {
-  reply.clearCookie(SESSION_COOKIE_NAME, { path: "/" });
+  reply.clearCookie(SESSION_COOKIE_NAME, { path: "/", httpOnly: true, secure: servedOverHttps(), sameSite: "lax" });
 }

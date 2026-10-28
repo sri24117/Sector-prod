@@ -11,6 +11,7 @@ const call = (cookie: string, method: "GET" | "POST", url: string, payload?: unk
 async function signup(name: string, email: string, fcraSelfDeclared: boolean) {
   const r = await app.inject({ method: "POST", url: "/auth/signup", payload: { organizationName: name, name: "O", email, password: "long-enough-password", fcraSelfDeclared } });
   const c = r.cookies.find((x) => x.name === "sector_session")!;
+  await rawDb.update(schema.organizations).set({ plan: "pro" }).where(eq(schema.organizations.id, r.json().organizationId)); // Ad Grants is Pro; the FCRA gate is tested on top of it
   return { cookie: `${c.name}=${c.value}`, orgId: r.json().organizationId as string, userId: r.json().userId as string };
 }
 beforeAll(async () => { app = await buildApp({ adsGateway: gateway }); await app.ready(); });

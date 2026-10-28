@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { rawDb, schema } from "./client.js";
 
@@ -114,6 +114,15 @@ export function scopedDb(organizationId: string) {
           .returning().then((r) => r[0]!),
     },
     remediationLogs: {
+      findById: (logId: string) => rawDb.select().from(schema.remediationLogs).where(and(eq(schema.remediationLogs.id, logId), eq(schema.remediationLogs.organizationId, organizationId))).then((r) => r[0] ?? null),
+      begin: (findingId: string, payload: unknown, beforeScore: number) => rawDb.transaction(async (tx) => {
+        await tx.select({ id: schema.organizations.id }).from(schema.organizations).where(eq(schema.organizations.id, organizationId)).for("update");
+        const [previous] = await tx.select().from(schema.remediationLogs).where(and(eq(schema.remediationLogs.organizationId, organizationId), eq(schema.remediationLogs.findingId, findingId), eq(schema.remediationLogs.platform, "wordpress"))).orderBy(desc(schema.remediationLogs.createdAt)).limit(1);
+        if (previous) return { previous };
+        const [log] = await tx.insert(schema.remediationLogs).values({ organizationId, findingId, payload, beforeScore, platform: "wordpress", action: "apply_jsonld_schema", status: "applying" }).returning();
+        return { log: log! };
+      }),
+      update: (logId: string, data: { status: string; detail?: string; afterScore?: number }) => rawDb.update(schema.remediationLogs).set(data).where(and(eq(schema.remediationLogs.id, logId), eq(schema.remediationLogs.organizationId, organizationId))).returning().then((r) => r[0] ?? null),
       create: (data: Omit<typeof schema.remediationLogs.$inferInsert, "organizationId" | "id" | "createdAt">) =>
         rawDb.insert(schema.remediationLogs).values({ ...data, organizationId }).returning().then((r) => r[0]!),
       list: () => rawDb.select().from(schema.remediationLogs).where(eq(schema.remediationLogs.organizationId, organizationId)).orderBy(desc(schema.remediationLogs.createdAt)),
@@ -150,12 +159,33 @@ export function scopedDb(organizationId: string) {
       revoke: (consentId: string) =>
         rawDb.update(schema.consentRecords).set({ revokedAt: new Date() }).where(and(eq(schema.consentRecords.id, consentId), eq(schema.consentRecords.organizationId, organizationId))).returning().then((r) => r[0] ?? null),
     },
+    calendar: {
+      list: () => rawDb.select({ item: schema.calendarItems, asset: schema.contentAssets }).from(schema.calendarItems)
+        .innerJoin(schema.contentAssets, and(eq(schema.calendarItems.contentAssetId, schema.contentAssets.id), eq(schema.contentAssets.organizationId, organizationId)))
+        .where(eq(schema.calendarItems.organizationId, organizationId)).orderBy(schema.calendarItems.date),
+      create: (data: Omit<typeof schema.calendarItems.$inferInsert, "id" | "organizationId" | "createdAt">) => rawDb.insert(schema.calendarItems).values({ ...data, organizationId }).returning().then((r) => r[0]!),
+      update: (itemId: string, data: Partial<Pick<typeof schema.calendarItems.$inferInsert, "date" | "channel" | "objective" | "assignee">>) => rawDb.update(schema.calendarItems).set(data)
+        .where(and(eq(schema.calendarItems.organizationId, organizationId), eq(schema.calendarItems.id, itemId))).returning().then((r) => r[0] ?? null),
+      remove: (itemId: string) => rawDb.delete(schema.calendarItems).where(and(eq(schema.calendarItems.organizationId, organizationId), eq(schema.calendarItems.id, itemId))).returning().then((r) => r[0] ?? null),
+    },
     contentAssets: {
+      createWithinAllowance: (data: Omit<typeof schema.contentAssets.$inferInsert, "organizationId" | "id" | "createdAt">, allowance: number | null, since: Date) => rawDb.transaction(async (tx) => {
+        await tx.select({ id: schema.organizations.id }).from(schema.organizations).where(eq(schema.organizations.id, organizationId)).for("update");
+        const rows = await tx.select({ id: schema.contentAssets.id }).from(schema.contentAssets).where(and(eq(schema.contentAssets.organizationId, organizationId), gte(schema.contentAssets.createdAt, since)));
+        if (allowance !== null && rows.length >= allowance) return null;
+        return tx.insert(schema.contentAssets).values({ ...data, organizationId }).returning().then((r) => r[0]!);
+      }),
+      edit: (assetId: string, revision: number, data: Pick<typeof schema.contentAssets.$inferInsert, "title" | "body" | "beneficiaryRefs" | "facts">) => rawDb.update(schema.contentAssets)
+        .set({ ...data, revision: revision + 1, status: "draft" }).where(and(eq(schema.contentAssets.id, assetId), eq(schema.contentAssets.organizationId, organizationId), eq(schema.contentAssets.revision, revision))).returning().then((r) => r[0] ?? null),
+      transition: (assetId: string, revision: number, from: string[], status: string) => rawDb.update(schema.contentAssets).set({ status })
+        .where(and(eq(schema.contentAssets.id, assetId), eq(schema.contentAssets.organizationId, organizationId), eq(schema.contentAssets.revision, revision), inArray(schema.contentAssets.status, from))).returning().then((r) => r[0] ?? null),
       create: (data: Omit<typeof schema.contentAssets.$inferInsert, "organizationId" | "id" | "createdAt">) =>
         rawDb.insert(schema.contentAssets).values({ ...data, organizationId }).returning().then((r) => r[0]!),
       findById: (assetId: string) =>
         rawDb.select().from(schema.contentAssets).where(and(eq(schema.contentAssets.id, assetId), eq(schema.contentAssets.organizationId, organizationId))).then((r) => r[0] ?? null),
       list: () => rawDb.select().from(schema.contentAssets).where(eq(schema.contentAssets.organizationId, organizationId)).orderBy(desc(schema.contentAssets.createdAt)),
+      countSince: (since: Date) => rawDb.select({ id: schema.contentAssets.id }).from(schema.contentAssets)
+        .where(and(eq(schema.contentAssets.organizationId, organizationId), gte(schema.contentAssets.createdAt, since))).then((r) => r.length),
       setStatus: (assetId: string, status: string) =>
         rawDb.update(schema.contentAssets).set({ status }).where(and(eq(schema.contentAssets.id, assetId), eq(schema.contentAssets.organizationId, organizationId))).returning().then((r) => r[0] ?? null),
     },
@@ -176,6 +206,15 @@ export function scopedDb(organizationId: string) {
         rawDb.update(schema.siteVerifications).set({ method, verifiedAt: new Date() }).where(eq(schema.siteVerifications.organizationId, organizationId)).returning().then((r) => r[0] ?? null),
     },
     reports: {
+      admit: (data: { siteUrl: string; createdBy: string }, dailyLimit: number) => rawDb.transaction(async (tx) => {
+        await tx.select({ id: schema.organizations.id }).from(schema.organizations).where(eq(schema.organizations.id, organizationId)).for("update");
+        const rows = await tx.select({ status: schema.reports.status, createdAt: schema.reports.createdAt }).from(schema.reports)
+          .where(and(eq(schema.reports.organizationId, organizationId), gt(schema.reports.createdAt, new Date(Date.now() - 86_400_000))));
+        if (rows.some((r) => ["queued", "running"].includes(r.status) && r.createdAt.getTime() > Date.now() - 15 * 60_000)) return { error: "report_in_progress" } as const;
+        if (rows.length >= dailyLimit) return { error: "daily_limit" } as const;
+        const [report] = await tx.insert(schema.reports).values({ ...data, organizationId }).returning({ id: schema.reports.id, status: schema.reports.status, siteUrl: schema.reports.siteUrl, createdAt: schema.reports.createdAt });
+        return { report: report! };
+      }),
       create: (data: { siteUrl: string; createdBy: string }) =>
         rawDb.insert(schema.reports).values({ ...data, organizationId }).returning({ id: schema.reports.id, status: schema.reports.status, siteUrl: schema.reports.siteUrl, createdAt: schema.reports.createdAt }).then((r) => r[0]!),
       // Listing never loads the heavy html/pdf columns.

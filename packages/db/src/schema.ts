@@ -51,6 +51,10 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  // When this person accepted the Terms of Service and Privacy Policy at signup, and which version
+  // (apps/api/src/lib/legal.ts). Null for accounts created before acceptance was recorded.
+  termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+  termsVersion: text("terms_version"),
 });
 
 // Phase 0-1 simplification (named, not silent): one membership per user.
@@ -233,6 +237,8 @@ export const contentAssets = pgTable("content_assets", {
   body: text("body").notNull(), beneficiaryRefs: jsonb("beneficiary_refs").$type<string[]>().notNull().default([]),
   status: text("status").notNull().default("draft"), createdBy: text("created_by").notNull(),
   model: text("model"), createdAt: created(),
+  revision: integer("revision").notNull().default(1),
+  facts: jsonb("facts").$type<string[]>().notNull().default([]),
 }, (t) => [index("content_org_idx").on(t.organizationId)]);
 
 // ---------------- Full report (docs/superpowers/specs/2026-10-04-full-report-design.md) ----------------
@@ -299,3 +305,11 @@ export const reviewEdits = pgTable("review_edits", {
   target: text("target").notNull(), oldValue: jsonb("old_value"), newValue: jsonb("new_value"),
   note: text("note").notNull(), createdAt: created(),
 }, (t) => [index("review_edits_audit_idx").on(t.auditId)]);
+// Starter calendar plans manual posting; no scheduler or publication claims.
+export const calendarItems = pgTable("calendar_items", {
+  id: id(), organizationId: orgRef(),
+  contentAssetId: text("content_asset_id").notNull().references(() => contentAssets.id, { onDelete: "cascade" }),
+  date: text("date").notNull(), channel: text("channel").notNull(),
+  objective: text("objective").notNull(), assignee: text("assignee").notNull(),
+  createdAt: created(),
+}, (t) => [index("calendar_org_date_idx").on(t.organizationId, t.date)]);

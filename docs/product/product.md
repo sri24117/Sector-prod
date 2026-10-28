@@ -110,3 +110,83 @@ Full detail for each: `skills/*.md`. Cross-cutting shared models
   caps concurrent headless-browser rendering and argues for an external
   managed service (Browserless.io) over self-hosting Playwright at this
   stage — see `docs/decisions/ADR-0003-hosting-topology.md`.
+
+## Pricing and plans
+
+**Status: CONFIRMED by the founder, 2026-10-28.** Enforced in code by one shared table
+(`packages/shared/src/plans.ts`); the API refuses a locked feature with
+`403 plan_required`, and the web app shows a locked state.
+
+### Prices
+
+Rs, quoted "+ GST" (exclusive of 18% GST).
+
+| Plan | Monthly | Annual |
+|---|---|---|
+| Free | 0 | 0 |
+| Starter | 5,999 | 53,999 |
+| Growth | 12,999 | 1,16,999 |
+| Pro | 21,999 | 1,97,999 |
+
+- Free and Starter launch for real. **Growth and Pro are a founding-member
+  waitlist**, not self-serve: ops assigns them by hand, and founding members
+  keep their price for 12 months.
+- Payments are **manual invoicing only** (ADR-0006). Ops sets the plan with
+  `apps/api/src/scripts/set-plan.ts` after invoicing. There is no billing
+  code, no Razorpay and no pricing page.
+- There are **no monthly report counts**. Caps follow marginal cost, so only
+  AI-generated content has an allowance.
+
+### What each plan includes
+
+| Feature | Free | Starter | Growth | Pro |
+|---|---|---|---|---|
+| Audit score and findings (public audit needs no sign-in); manual fix steps | yes | yes | yes | yes |
+| Full report: search and AI visibility, website health, accessibility, social links, action plan, PDF | locked | yes | yes | yes |
+| Live WordPress fixes (connect + schema fix) | locked | yes | yes | yes |
+| Brand kit, consent records, generated content | locked | yes, 15 pieces a month | yes, no cap yet | yes, no cap yet |
+| Researcher (grants and tenders watchlist) | no | no | coming soon | coming soon |
+| Manual content calendar: dates, channels, objectives, responsible person, linked draft and readiness | no | yes | yes | yes |
+| Automatic social publishing and advanced assisted posting | no | no | coming soon | coming soon |
+| Ad Grants monitoring (account link, compliance checks, alerts) | locked | locked | locked | yes |
+| Periodic human review by the SEctOr team | no | no | no | coming soon |
+
+- Each plan includes everything in the plan before it. **Pro is everything that is
+  live, including new features as they ship.**
+- Ad Grants stays behind the existing ops-confirmed FCRA gate, and also needs Google
+  Ads API access, which is not yet applied for. Pro does not bypass either.
+- Automatic posting to Facebook and Instagram happens only when SEctOr's own
+  platform approval clears. LinkedIn is included in Growth once its approval clears.
+  No dates are promised. Social scheduling is promised only "as platform approvals clear".
+- The generated-content allowance is Starter 15 a month (calendar month, Asia/Kolkata).
+  Manual and generated drafts both use the existing piece allowance; edits and repeat downloads do not create extra pieces.
+  **TODO (founder):** the Growth and Pro allowances are undecided until real AI cost is
+  known. They are unset, meaning no cap, in the table; do not invent a number.
+- Legacy plan names `pilot` and `paid` are aliases for Starter, so existing
+  organizations keep their access.
+
+### Standalone (a la carte) prices: recorded, not built
+
+Bundles only for now. For reference, monthly, + GST:
+
+| Skill | Price | Notes |
+|---|---|---|
+| Audit | free always | |
+| SEO/GEO Implementor | 4,999 | WordPress only |
+| Social Content Calendar | 5,999 | plus a Rs 2,999 LinkedIn add-on for standalone buyers only; hidden or "coming soon" until approval clears |
+| Content Creator | 4,999 | 15 pieces a month |
+| Brand and Visual Designer | 3,999 | 25 images a month |
+| Researcher | 2,499 | |
+| Ad Grants | 9,999 | FCRA-registered organizations only |
+
+The seven sum to Rs 32,494 a month; Pro is about 32% off that.
+
+### Coming soon (not built, or manual)
+
+Researcher, automatic posting, image generation (Skill 5) and the
+human review. These are labelled "coming soon" and have no gating in code.
+
+### Not built in this decision
+
+Billing, a pricing page, per-skill purchases, per-skill entitlements. Future ideas
+are logged in `docs/plans/future-ideas-2026-10.md`.

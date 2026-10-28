@@ -1,3 +1,4 @@
+import { registerCalendarRoutes } from "./routes/calendar.js";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
@@ -16,6 +17,7 @@ import { registerFunnelRoutes } from "./lib/funnel.js";
 import { registerReportRoutes, type ReportQueue } from "./routes/reports.js";
 import { registerResearchAuditRoutes, type ResearchQueue } from "./routes/research-audits.js";
 import { bullReportQueue } from "./lib/report-queue.js";
+import { servedOverHttps, HSTS_HEADER } from "./lib/https.js";
 
 // Single place the server is assembled, so tests exercise the exact production wiring.
 export async function buildApp(opts: { logger?: boolean; adsGateway?: GoogleAdsGateway; llmProvider?: LlmProvider; reportQueue?: ReportQueue; researchQueue?: ResearchQueue } = {}): Promise<FastifyInstance> {
@@ -27,6 +29,8 @@ export async function buildApp(opts: { logger?: boolean; adsGateway?: GoogleAdsG
   await app.register(cors, { origin: process.env.APP_URL ?? "http://localhost:3000", credentials: true });
   await app.register(cookie);
   await app.register(rateLimit, { global: false });
+  // HSTS: once a browser has seen the API over https, it stops making plain-http requests to it (session cookie included).
+  if (servedOverHttps()) app.addHook("onSend", async (_request, reply) => { reply.header("strict-transport-security", HSTS_HEADER); });
   // Unhandled errors: full detail goes to the server log only. A 5xx body must never echo
   // internals (a bad DATABASE_URL once leaked Postgres's own error text via /auth/login).
   // Deliberate 4xx errors (validation, rate limit) keep Fastify's default response.
@@ -44,6 +48,7 @@ export async function buildApp(opts: { logger?: boolean; adsGateway?: GoogleAdsG
   await registerRemediationRoutes(app);
   await registerAdGrantsRoutes(app, opts.adsGateway);
   await registerContentRoutes(app, opts.llmProvider);
+  await registerCalendarRoutes(app);
   await registerReportRoutes(app, opts.reportQueue ?? bullReportQueue());
   await registerResearchAuditRoutes(app, opts.researchQueue);
   return app;

@@ -22,6 +22,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./net-guard": "./src/net-guard.ts",
-    "./research-score": "./src/research-score.ts"
+    "./research-score": "./src/research-score.ts",
+    "./plans": "./src/plans.ts"
   }
 }

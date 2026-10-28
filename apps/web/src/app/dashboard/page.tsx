@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../../lib/api";
-import { AppShell, FindingList, Mark, RenderCaveat, Score, potentialScore, when, type FindingLike } from "../../lib/ui";
+import { AppShell, FindingList, Mark, RenderCaveat, Score, when, type FindingLike } from "../../lib/ui";
 import { checkCopy, pointsFor } from "../../lib/checks";
 
 interface NextStep { title: string; body: string; href: string; label: string }
@@ -12,8 +12,8 @@ function nextStepFor(audits: Audit[], findings: FindingLike[] | null, connected:
   if (audits.length === 0) return { title: "Run your first audit", body: "It takes a few seconds and shows exactly what to fix, in plain words.", href: "/audits", label: "Run your first audit" };
   const failing = (findings ?? []).filter((f) => !f.passed).sort((a, b) => pointsFor(b) - pointsFor(a));
   const schema = failing.find((f) => f.checkId === "schema");
-  if (schema && !connected) return { title: `Connect WordPress (+${pointsFor(schema)} points)`, body: "Once connected, SEctOr adds the missing organization details to your site for you and re-checks it.", href: "/audits#wordpress", label: "Connect WordPress" };
-  if (schema && connected) return { title: `Apply your first fix (+${pointsFor(schema)} points)`, body: "Your WordPress site is connected. One click adds the missing organization details and re-checks your score.", href: "/audits", label: "Apply the fix" };
+  if (schema && !connected) return { title: "Connect WordPress for supported improvements", body: "Once connected, SEctOr adds the missing organization details to your site for you and re-checks it.", href: "/audits#wordpress", label: "Connect WordPress" };
+  if (schema && connected) return { title: "Review your first website improvement", body: "Your WordPress site is connected. Review the target and organization details before approving the change.", href: "/audits", label: "Review the change" };
   const top = failing[0];
   if (top) return { title: `Fix: ${checkCopy(top.checkId).title} (+${pointsFor(top)} points)`, body: `${checkCopy(top.checkId).effort}. The Audits page has the steps.`, href: "/audits", label: "Show me how" };
   return { title: "Re-check your site", body: "Every check passes. Sites change over time, so run an audit now and then to keep it that way.", href: "/audits", label: "Run a new audit" };
@@ -75,7 +75,7 @@ function Overview() {
             <div style={{ marginTop: "var(--s-5)" }}><Score value={last.score} animate={false} /></div>
             <RenderCaveat />
             <p className="prose" style={{ marginTop: "var(--s-5)" }}>
-              {attention === 0 ? "Every check passed on the latest audit." : `${attention} ${attention === 1 ? "check needs" : "checks need"} attention. Fixing them could take you to ${potentialScore(last.score, latest ?? [])}.`}
+              {attention === 0 ? "Every check passed on the latest audit." : `${attention} ${attention === 1 ? "check needs" : "checks need"} attention. Review the evidence before choosing what to improve.`}
             </p>
             {latest && attention > 0 && (() => {
               // Top three wins only; the full list lives on the Audits page.
