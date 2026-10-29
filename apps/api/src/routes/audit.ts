@@ -64,7 +64,9 @@ export async function registerAuditRoutes(app: FastifyInstance): Promise<void> {
       const slot = await withAuditSlot(() => runAudit(normalized, { allowUrl: isSafePublicUrl, signal: AbortSignal.timeout(CRAWL_TIMEOUT_MS) }));
       if (!slot) return reply.status(503).send(BUSY);
       await recordFunnelEvent({ event: "audit_run", url: slot.value.url });
-      return reply.status(200).send(slot.value);
+      // platform and htmlWords are crawler internals for the research audit; the public contract stays as it was.
+      const { platform: _platform, htmlWords: _htmlWords, ...pub } = slot.value;
+      return reply.status(200).send(pub);
     } catch (err) {
       request.log.warn({ err, url: normalized }, "audit crawl failed");
       return reply.status(502).send({
