@@ -1,0 +1,58 @@
+# Pull request checks: types, lint, tests and build against real Postgres and Redis.
+# It runs the same commands as a developer (README, CLAUDE.md §8), no deploy and no secrets.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sector
+          POSTGRES_PASSWORD: sector
+          POSTGRES_DB: sector
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sector"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://sector:sector@localhost:5432/sector
+      REDIS_URL: redis://localhost:6379
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+    steps:
+      # Actions are pinned to full commits (this repository is public). Dependabot or a
+      # manual bump should update them together with the version comment.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # packageManager in package.json pins pnpm; corepack provides exactly that version.
+      - run: corepack enable
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The worker's browser tests use Playwright's Chromium with its sandbox ON (no --no-sandbox).
+      - run: pnpm --filter @sector/workers exec playwright install --with-deps chromium
+      # Ubuntu 24.04 blocks the unprivileged user namespaces Chromium's sandbox needs. This runner
+      # is disposable, so relax it here. Production does not: see infra/seccomp/README.md.
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: pnpm exec turbo run typecheck lint test build --concurrency=1
