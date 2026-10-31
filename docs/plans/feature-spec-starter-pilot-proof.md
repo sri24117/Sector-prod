@@ -1,6 +1,7 @@
 # Feature: Starter pilot proof
 
-Status: PROPOSED. Nothing here is built or decided until the founder approves it (CLAUDE.md §7).
+Status: the six open decisions were confirmed by the founder on 2026-10-31 and are recorded in
+"Decisions" below. No slice has started. Slice D stays gated on its own pass bar.
 Written 2026-10-31 against `main` at `bc487df`. Format: the MVP Feature Card
 (`docs/methodology/AI_ENGINEERING_HANDYBOOK.md` §24), shaped by the founder's Builder Playbook.
 
@@ -40,8 +41,9 @@ sentence, list the assumptions, and run the cheapest test that could kill it.
 | 7 | Generated drafts are safe: no invented facts, no consent-less beneficiary content | Not sure (needs evals) |
 
 **Kill test, within 7 days:** show the real report for 5 real NGO sites, plus a Starter walkthrough
-and the price, to 5 real buyers, and ask whether they would take a one-month paid pilot. Proposed
-bar: at least 2 of 5 say yes to an invoice. HUMAN DECISION REQUIRED: the bar, and who the 5 are.
+and the price, to 5 real buyers, and ask whether they would take a one-month paid pilot. Bar
+(confirmed, decision 1): at least 2 of 5 agree to a paid one-month pilot, and at least 1 confirms
+in writing within 14 days.
 
 ## Current behavior (read on `main`, not run)
 
@@ -64,7 +66,7 @@ In four slices. Slice A and C can start now and in parallel. D waits for one hum
 ### Slice B: release gates (Level 2)
 
 - B1. Apply migrations `0000` to `0006` to a fresh native Postgres 16 database, and upgrade a copy that is at `0003`. Report what ran.
-- B2. A CI workflow running types, lint, tests and the worker sandbox test. It is blocked until a token with workflow scope exists. HUMAN DECISION REQUIRED: who adds it.
+- B2. A CI workflow running types, lint, tests and the worker sandbox test. Pushing a workflow file needs a token with workflow scope; the founder adds that to their own `gh` login (decision 5).
 
 ### Slice C: see whether Starter is used (Level 2, no schema change)
 
@@ -76,18 +78,18 @@ Extend `apps/api/src/scripts/funnel-report.ts` with numbers derived from tables 
 - verified WordPress fixes (already counted);
 - organizations active in the last 7 days.
 
-HUMAN DECISION REQUIRED: the activation definition and the North Star. Proposal: **activated** = an approved content piece or a verified fix within 14 days of being set to Starter; **North Star** = organizations with at least one approved piece or verified fix in the last 7 days.
+Definitions (confirmed, decision 2): **activated** = an exported content piece or a verified fix within 14 days of being set to Starter; **North Star** = organizations with at least one exported piece or verified fix in the last 7 days. Export, not approval, because export means the organization took the work.
 Not proposed: PostHog or any analytics service. It would be a new third-party processor for NGO data, which needs an ADR and a DPDP view (CLAUDE.md §2, §5).
 
 ### Slice D: AI quality gate before generation is switched on (Level 3: personal data and consent)
 
 Generation stays off until this passes.
 
-- D1. HUMAN DECISION REQUIRED: the provider and model. Only de-identified data may go to a non-Indian LLM API (CLAUDE.md §5).
+- D1. Provider (decision 3): do not enable generation for the first pilot; manual drafting covers it. When D passes, the only provider wired today appears to be Anthropic's (`packages/ai/src/index.ts`). Evaluate a mid-size and a smaller model and keep the cheapest that passes. Before any real NGO data goes to a provider, confirm the privacy policy and DPDP addendum name it as a processor. Only de-identified data may go to a non-Indian LLM API (CLAUDE.md §5).
 - D2. An eval set of 30 cases, 10 of them adversarial: facts that tempt invented numbers; a beneficiary named only in the facts (the placeholder step misses it); thin facts; a request for an unverifiable claim about FCRA, 12A or 80G; prompt-injection text inside the facts. Fixture-based and repeatable, kept under `apps/api/test/` or a sibling folder.
 - D3. Pass bar, proposed: zero invented numbers, names or quotes (every figure and proper noun in the draft appears in the supplied facts); when facts are thin the draft says what is missing instead of guessing; the consent gate still blocks export.
 - D4. A shadow run on 3 pilot organizations' real facts. The founder compares the drafts with what they would have written. Record the gaps.
-- D5. Record tokens and cost per piece during the eval run, then compute the Starter margin: price against 15 pieces plus the hosting share. HUMAN DECISION REQUIRED: the margin floor (the Playbook suggests 65 percent). Metering inside the product is not proposed yet; it would need a schema change and a human decision.
+- D5. Record tokens and cost per piece during the eval run, then compute the Starter margin: price against 15 pieces plus the hosting share. Margin (confirmed, decision 4): floor 65 percent, target 75 percent, on direct costs (AI, hosting share, payment fees). Founder support hours per pilot customer are tracked separately, since at five customers that time is the real cost. Metering inside the product is not proposed yet; it would need a schema change and a human decision.
 
 ## Acceptance criteria
 
@@ -146,14 +148,14 @@ Each slice names its own evidence. For Slice C: a test against a seeded database
 
 The Playbook's own worked examples are about clinics, so only its principles are used here.
 
-## Open decisions (HUMAN DECISION REQUIRED)
+## Decisions (confirmed by the founder, 2026-10-31)
 
-1. The kill-test bar and the five buyers.
-2. Activation definition and North Star (proposals above).
-3. LLM provider and model, and whether generation is worth enabling before the pilot.
-4. Margin floor for Starter.
-5. Who adds the CI workflow token.
-6. Whether pilot Starter plans include the researcher and social planning listed in `docs/product/product.md`, which are not built (already flagged in the 2026-10-26 handoff note).
+1. **Kill test.** At least 2 of 5 buyers agree to a paid one-month pilot and at least 1 confirms in writing within 14 days. Buyers match the research profile (FCRA-registered, foundation- or CSR-backed, a named comms person, preferably WordPress): three warm from the founder's network, two cold, none who would say yes to be polite. Before showing the price, ask what they spent on their website and content in the last year. The five are chosen by the founder and are not named in this public repository.
+2. **Activation and North Star.** As defined in Slice C, using exported content.
+3. **AI provider.** Generation stays off for the first pilot. Choose the provider and model after Slice D, as in D1.
+4. **Margin.** Floor 65 percent, target 75 percent, as in D5.
+5. **CI token.** The founder adds the workflow scope to their own `gh` login (`gh auth refresh -h github.com -s workflow`). No token is ever pasted into chat or committed.
+6. **What pilot Starter contains.** Only what is built: audit, full report, WordPress schema fix, content (manual always; AI after the quality gate), brand kit, consent records, and the manual-posting calendar. Researcher and automatic posting stay "coming soon" in Growth. `docs/product/product.md` already says this.
 
 ## Definition of done
 
