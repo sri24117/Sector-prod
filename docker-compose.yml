@@ -86,6 +86,7 @@ services:
       TRUST_PROXY: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
       # Explicit: env_file may carry NODE_ENV=development, which would bind loopback only.
       HOST: 0.0.0.0
+      RESEARCH_AUDIT_ENABLED: ${RESEARCH_AUDIT_ENABLED:-false}
       NODE_ENV: production
     depends_on:
       postgres:

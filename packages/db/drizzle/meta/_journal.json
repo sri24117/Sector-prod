@@ -50,6 +50,13 @@
       "when": 1793200038914,
       "tag": "0006_research_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793200214375,
+      "tag": "0007_research_rules",
+      "breakpoints": true
     }
   ]
 }

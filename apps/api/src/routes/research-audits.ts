@@ -18,7 +18,7 @@ const DAILY_LIMIT = 3;
 export function presentAudit(row: AuditRow) {
   const released = row.status === "released" && row.releasedAt !== null;
   return {
-    id: row.id, siteUrl: row.siteUrl, platform: row.platform, status: row.status, createdAt: row.createdAt,
+    id: row.id, siteUrl: row.siteUrl, platform: released ? row.platform : null, status: row.status, createdAt: row.createdAt,
     releasedAt: released ? row.releasedAt : null,
     seoScore: released ? row.seoScore : null, aioScore: released ? row.aioScore : null,
     uiuxScore: released ? row.uiuxScore : null, brandScore: released ? row.brandScore : null,

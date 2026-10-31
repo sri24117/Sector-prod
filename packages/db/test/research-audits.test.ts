@@ -88,9 +88,22 @@ describe("researchAudits repository", () => {
     expect(await db.countSince(new Date(Date.now() - 60_000))).toBe(1);
     expect(await db.countSince(new Date(Date.now() + 60_000))).toBe(0);
   });
+  it("update returns null and changes nothing once an audit is released", async () => {
+    const db = scopedDb(orgA).researchAudits;
+    const a = await db.create({ siteUrl: "https://a.example.org/", createdBy: "u1" });
+    await rawDb.update(schema.researchAudits).set({ status: "released", releasedAt: new Date(), overallScore: 70 }).where(eq(schema.researchAudits.id, a.id));
+    expect(await db.update(a.id, { overallScore: 5, status: "failed" })).toBeNull();
+    const row = await db.findById(a.id);
+    expect(row?.status).toBe("released");
+    expect(row?.overallScore).toBe(70);
+  });
 });
 
 describe("research tables constraints", () => {
+  it("rejects a peer finding whose source_url is only whitespace", async () => {
+    await expect(rawDb.insert(schema.researchFindings).values({ auditId: auditA, organizationId: orgA, pillar: "seo", layer: "peer", checkId: "x", result: "pass", points: 5, sourceUrl: "   " })).rejects.toThrow();
+  });
+
   it("rejects a peer or reference finding with no source_url", async () => {
     for (const layer of ["peer", "reference"]) {
       await expect(rawDb.insert(schema.researchFindings).values({ auditId: auditA, organizationId: orgA, pillar: "seo", layer, checkId: "x", result: "pass", points: 5 })).rejects.toThrow();

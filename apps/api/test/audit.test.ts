@@ -39,6 +39,21 @@ describe("POST /audit", () => {
     expect(runAudit).toHaveBeenCalledWith("https://example-ngo.org/", { allowUrl: expect.any(Function), signal: expect.any(AbortSignal) });
   });
 
+  it("does not leak the crawler's internal platform and htmlWords fields", async () => {
+    vi.mocked(runAudit).mockResolvedValueOnce({
+      url: "https://example-ngo.org/", score: 65, runAt: "2026-09-25T00:00:00.000Z", platform: "wix", htmlWords: 500,
+      checks: [{ checkId: "schema", weight: 20, passed: true, detail: "ok" }],
+    });
+    const app = await buildApp();
+    const res = await app.inject({ method: "POST", url: "/audit", payload: { url: "example-ngo.org" } });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body).not.toHaveProperty("platform");
+    expect(body).not.toHaveProperty("htmlWords");
+    expect(body).toMatchObject({ url: "https://example-ngo.org/", score: 65, runAt: "2026-09-25T00:00:00.000Z" });
+    expect(body.checks).toHaveLength(1);
+  });
+
   it("returns 400 for an empty/invalid URL and never calls the crawler", async () => {
     const app = await buildApp();
     const res = await app.inject({
