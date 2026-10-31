@@ -186,6 +186,8 @@ export function scopedDb(organizationId: string) {
       list: () => rawDb.select().from(schema.contentAssets).where(eq(schema.contentAssets.organizationId, organizationId)).orderBy(desc(schema.contentAssets.createdAt)),
       countSince: (since: Date) => rawDb.select({ id: schema.contentAssets.id }).from(schema.contentAssets)
         .where(and(eq(schema.contentAssets.organizationId, organizationId), gte(schema.contentAssets.createdAt, since))).then((r) => r.length),
+      countWithStatus: (status: string) => rawDb.select({ id: schema.contentAssets.id }).from(schema.contentAssets)
+        .where(and(eq(schema.contentAssets.organizationId, organizationId), eq(schema.contentAssets.status, status))).then((r) => r.length),
       setStatus: (assetId: string, status: string) =>
         rawDb.update(schema.contentAssets).set({ status }).where(and(eq(schema.contentAssets.id, assetId), eq(schema.contentAssets.organizationId, organizationId))).returning().then((r) => r[0] ?? null),
     },
