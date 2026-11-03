@@ -39,6 +39,11 @@ function Content({ me }: { me: Me }) {
     api<{ voice: string }>("/brand-kit").then((k) => setVoice(k.voice)).catch(() => undefined);
     // Initial load is intentionally performed once.
   }, []);
+  // From a calendar slot: start a manual social post with the slot's objective as its title.
+  useEffect(() => {
+    const topic = new URLSearchParams(window.location.search).get("topic");
+    if (topic) { setManual(true); setG((v) => ({ ...v, kind: "social_post", topic: topic.slice(0, 120) })); }
+  }, []);
 
   const act = (key: string, fn: () => Promise<void>) => guard(async () => { setBusy(key); try { await fn(); } finally { setBusy(null); } });
 
