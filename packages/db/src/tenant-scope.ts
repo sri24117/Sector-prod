@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNotNull, isNull } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { rawDb, schema } from "./client.js";
 
