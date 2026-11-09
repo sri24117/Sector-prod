@@ -13,6 +13,7 @@ export interface Me { userId: string; email: string; name: string; role: "owner"
 const NAV = [
   { href: "/dashboard", label: "Overview" },
   { href: "/audits", label: "Audits" },
+  { href: "/research", label: "Research" },
   { href: "/calendar", label: "Calendar" },
   { href: "/ad-grants", label: "Ad Grants" },
   { href: "/content", label: "Content" },

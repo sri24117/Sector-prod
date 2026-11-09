@@ -850,3 +850,115 @@ select.input { appearance: auto; }
   line-height: 1.6;
   color: var(--ink-muted);
 }
+
+/* ---------- Website Research (/research, Screen A18) ---------- */
+.research-overview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-5);
+  padding: var(--s-6);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  margin-bottom: var(--s-6);
+}
+.research-score-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+}
+.research-overall-num {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 56px;
+  line-height: 1;
+  font-weight: 400;
+}
+.pillar-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-bottom: var(--s-6);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--s-3);
+}
+.pillar-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--dur-1) var(--ease-out);
+}
+.pillar-tab:hover {
+  color: var(--ink);
+  border-color: var(--ink-muted);
+}
+.pillar-tab[aria-selected="true"] {
+  color: var(--ink);
+  background: var(--paper);
+  border-color: var(--pine);
+  box-shadow: 0 0 0 1px var(--pine);
+  font-weight: 600;
+}
+.pillar-tab-score {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 16px;
+  font-weight: 500;
+  padding-left: var(--s-2);
+  border-left: 1px solid var(--line);
+  color: var(--pine);
+}
+.pillar-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+.evidence-box {
+  padding: var(--s-3) var(--s-4);
+  background: var(--paper);
+  border-left: 3px solid var(--pine);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  margin-top: var(--s-3);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.evidence-quote {
+  font-style: italic;
+  color: var(--ink);
+}
+.evidence-source {
+  display: block;
+  margin-top: var(--s-1);
+  font-size: 11px;
+  color: var(--ink-muted);
+  font-style: normal;
+}
+.fix-recommendation {
+  margin-top: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  background: rgba(31, 77, 59, 0.05);
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: 2px var(--s-2);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.status-pill-pass { background: rgba(31, 77, 59, 0.1); color: var(--pine); }
+.status-pill-attention { background: rgba(156, 107, 31, 0.1); color: var(--ochre); }
+.status-pill-unverified { background: var(--line); color: var(--ink-muted); }
