@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { scopedDb } from "@sector/db";
+import { scopedDb, rawDb, schema } from "@sector/db";
+import { eq } from "drizzle-orm";
 import { authenticate, requireRole, logSecurityEvent } from "../auth/middleware.js";
 import { normalizeUrl } from "./audit.js";
 import { requireFeature } from "../auth/plan.js";
@@ -19,13 +20,86 @@ const REPORT_CSP = "default-src 'none'; img-src data:; font-src data:; style-src
 export async function registerReportRoutes(app: FastifyInstance, queue: ReportQueue): Promise<void> {
   const write = [authenticate, requireRole(["owner", "staff"])];
 
-  // The organization's own website. Changing it resets ownership verification.
+  // View organization details and statutory profile (Screen A16).
+  app.get("/organization/profile", { preHandler: authenticate }, async (req, reply) => {
+    const db = scopedDb(req.auth!.organizationId);
+    const [org, profile] = await Promise.all([db.organization.get(), db.organizationProfile.get()]);
+    if (!org) return reply.status(404).send({ error: "not_found", message: "Organization not found." });
+    return {
+      organizationId: org.id,
+      name: org.name,
+      plan: org.plan,
+      orgType: profile?.orgType ?? null,
+      websiteUrl: profile?.websiteUrl ?? null,
+      panNumber: profile?.panNumber ?? null,
+      section12ANumber: profile?.section12ANumber ?? null,
+      section80GNumber: profile?.section80GNumber ?? null,
+      fcraSelfDeclared: profile?.fcraSelfDeclared ?? false,
+      fcraRegistrationNo: profile?.fcraRegistrationNo ?? null,
+      fcraConfirmedAt: profile?.fcraConfirmedAt ?? null,
+    };
+  });
+
+  // Edit organization details, website, and statutory fields (Screen A16).
+  // fcraConfirmedAt is never editable through API routes (internal ops only).
   app.patch("/organization/profile", { preHandler: write }, async (req, reply) => {
-    const p = z.object({ websiteUrl: z.string().min(1).max(500) }).safeParse(req.body);
-    const url = p.success ? normalizeUrl(p.data.websiteUrl.trim()) : null;
-    if (!url) return reply.status(400).send({ error: "invalid_input", message: "Enter your website address, for example yourorganization.org." });
-    await scopedDb(req.auth!.organizationId).organizationProfile.upsert({ websiteUrl: url });
-    return { websiteUrl: url };
+    const p = z.object({
+      name: z.string().min(2).max(200).optional(),
+      orgType: z.string().max(50).nullable().optional(),
+      websiteUrl: z.string().max(500).nullable().optional(),
+      panNumber: z.string().max(30).nullable().optional(),
+      section12ANumber: z.string().max(50).nullable().optional(),
+      section80GNumber: z.string().max(50).nullable().optional(),
+      fcraSelfDeclared: z.boolean().optional(),
+      fcraRegistrationNo: z.string().max(50).nullable().optional(),
+    }).safeParse(req.body);
+
+    if (!p.success) {
+      return reply.status(400).send({ error: "invalid_input", message: "Please check the profile details you entered." });
+    }
+
+    const { name, ...profileFields } = p.data;
+    const db = scopedDb(req.auth!.organizationId);
+
+    if (name) {
+      await rawDb.update(schema.organizations).set({ name: name.trim(), updatedAt: new Date() }).where(eq(schema.organizations.id, req.auth!.organizationId));
+    }
+
+    const updates: Partial<typeof schema.organizationProfiles.$inferInsert> = {};
+    if (profileFields.orgType !== undefined) updates.orgType = profileFields.orgType;
+    if (profileFields.panNumber !== undefined) updates.panNumber = profileFields.panNumber?.trim() || null;
+    if (profileFields.section12ANumber !== undefined) updates.section12ANumber = profileFields.section12ANumber?.trim() || null;
+    if (profileFields.section80GNumber !== undefined) updates.section80GNumber = profileFields.section80GNumber?.trim() || null;
+    if (profileFields.fcraSelfDeclared !== undefined) updates.fcraSelfDeclared = profileFields.fcraSelfDeclared;
+    if (profileFields.fcraRegistrationNo !== undefined) updates.fcraRegistrationNo = profileFields.fcraRegistrationNo?.trim() || null;
+
+    if (profileFields.websiteUrl !== undefined) {
+      const trimmed = profileFields.websiteUrl ? profileFields.websiteUrl.trim() : "";
+      const url = trimmed ? normalizeUrl(trimmed) : null;
+      if (trimmed && !url) {
+        return reply.status(400).send({ error: "invalid_input", message: "Enter a valid website address, for example yourorganization.org." });
+      }
+      updates.websiteUrl = url;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await db.organizationProfile.upsert(updates);
+    }
+
+    const [updatedOrg, updatedProfile] = await Promise.all([db.organization.get(), db.organizationProfile.get()]);
+    return {
+      organizationId: updatedOrg!.id,
+      name: updatedOrg!.name,
+      plan: updatedOrg!.plan,
+      orgType: updatedProfile?.orgType ?? null,
+      websiteUrl: updatedProfile?.websiteUrl ?? null,
+      panNumber: updatedProfile?.panNumber ?? null,
+      section12ANumber: updatedProfile?.section12ANumber ?? null,
+      section80GNumber: updatedProfile?.section80GNumber ?? null,
+      fcraSelfDeclared: updatedProfile?.fcraSelfDeclared ?? false,
+      fcraRegistrationNo: updatedProfile?.fcraRegistrationNo ?? null,
+      fcraConfirmedAt: updatedProfile?.fcraConfirmedAt ?? null,
+    };
   });
 
   async function ownSite(organizationId: string) {

@@ -17,6 +17,7 @@ const NAV = [
   { href: "/calendar", label: "Calendar" },
   { href: "/ad-grants", label: "Ad Grants" },
   { href: "/content", label: "Content" },
+  { href: "/account", label: "Account" },
 ];
 const ROLE_LABEL = { owner: "Owner", staff: "Staff", viewer: "Viewer" } as const;
 
