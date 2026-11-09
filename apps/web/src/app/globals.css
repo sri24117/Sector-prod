@@ -18,6 +18,10 @@
   --radius: 6px;
   --measure: 70ch;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-1: 120ms;               /* press and hover */
+  --dur-2: 200ms;               /* a disclosure opening */
+  --dur-3: 320ms;               /* one staggered reveal after a result lands */
 
   color-scheme: light;
 }
@@ -379,8 +383,7 @@ select.input { appearance: auto; }
 .insight-compact .insight-body > * + * { margin-top: var(--s-1); }
 .insights-passed-label { margin: var(--s-6) 0 var(--s-3); }
 
-/* Value summary and next step */
-.value-card .value-line { font-family: var(--font-display), Georgia, serif; font-size: 20px; line-height: 1.3; font-weight: 500; text-wrap: balance; }
+/* Next step (dashboard) */
 .next-step-label { font-size: 13px; color: var(--ink-muted); }
 .next-step-title { font-family: var(--font-display), Georgia, serif; font-size: 20px; line-height: 1.3; font-weight: 500; margin-top: var(--s-1); }
 .next-step .actions { margin-top: var(--s-4); }
@@ -440,3 +443,410 @@ select.input { appearance: auto; }
 .code-row .code-line { flex: 1; min-width: 0; }
 .code-copy { flex: none; padding-top: 0; padding-bottom: 0; font-size: 14px; }
 @media (max-width: 640px) { .code-row { flex-direction: column; } }
+
+/* ---------- Cards and quiet motion (2026-10-27, approved by the product owner) ----------
+   A card groups one thing the reader decides about: the result, a finding, an access
+   decision. Cards keep the 1px hairline and gain only a 1px lift on hover. Motion explains
+   a change and never loops: 120ms press, 200ms disclosure, 320ms staggered reveal. */
+
+/* Audit summary: the score beside its arithmetic, plus a weighted strip of the seven checks. */
+.audit-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-5) var(--s-7);
+}
+.audit-summary .score { flex: none; }
+.audit-summary-body { min-width: 0; flex: 1 1 240px; }
+.audit-facts { display: flex; flex-wrap: wrap; gap: var(--s-3) var(--s-6); margin-top: var(--s-4); }
+.audit-fact b { display: block; font-size: 20px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.audit-fact span { display: block; margin-top: var(--s-1); font-size: 13px; line-height: 1.5; color: var(--ink-muted); }
+.audit-strip { display: none; margin-left: auto; align-items: center; gap: 3px; }
+.audit-strip span { display: block; height: 6px; border-radius: 999px; background: var(--line); }
+.audit-strip span[data-pass] { background: var(--pine); }
+
+/* A card header: the thing on the left, its state on the right, one baseline. */
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-1) var(--s-3);
+}
+
+/* Only cards that are themselves a target lift; a summary card stays still. */
+.card-hover {
+  transition: border-color var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
+}
+.card-hover:hover,
+.card-hover:focus-within { border-color: var(--ink-muted); transform: translateY(-1px); }
+
+/* The audit map (2026-10-27, design A): a weighted register of all seven checks beside one
+   finding sheet. Selection is a vertical tablist; the selected row carries a pine ring. */
+.audit-map { display: grid; gap: var(--s-6); }
+.audit-map-label { margin-bottom: var(--s-2); font-size: 13px; line-height: 1.5; color: var(--ink-muted); }
+
+.check-register {
+  padding: var(--s-2);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+}
+.check-tab {
+  display: flex;
+  width: 100%;
+  min-height: 64px;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
+}
+.check-tab:hover { background: var(--surface); }
+.check-tab[aria-selected="true"] { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--pine); }
+.check-tab:focus-visible { outline: 2px solid var(--pine); outline-offset: 0; }
+.check-tab-body { min-width: 0; flex: 1; }
+.check-title { display: block; font-size: 14px; font-weight: 600; line-height: 1.3; }
+.check-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-top: var(--s-1);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+.check-track { display: block; height: 3px; overflow: hidden; border-radius: 999px; background: var(--line); }
+.check-fill { display: block; height: 100%; border-radius: 999px; background: var(--pine); }
+
+.check-sheet {
+  scroll-margin-top: var(--s-5);
+  padding: var(--s-6);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+}
+.check-sheet-title { max-width: 28ch; font-size: 20px; font-weight: 600; line-height: 1.3; text-wrap: balance; }
+.check-sheet-status { display: inline-flex; align-items: center; gap: var(--s-2); font-size: 13px; line-height: 1.5; white-space: nowrap; }
+.check-sheet-why { margin-top: var(--s-5); padding-top: var(--s-4); border-top: 1px solid var(--line); }
+.check-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4);
+  margin-top: var(--s-5);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line);
+}
+.check-field-label { font-size: 13px; line-height: 1.5; color: var(--ink-muted); }
+.check-field-value { margin-top: var(--s-1); font-size: 16px; line-height: 1.5; }
+
+/* The one staggered entrance: used when an audit result arrives. */
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.reveal {
+  animation: reveal-up var(--dur-3) var(--ease-out) both;
+  animation-delay: calc(var(--reveal-i, 0) * 55ms);
+}
+
+.btn { transition: opacity 150ms, background-color 150ms, color 150ms, transform var(--dur-1) var(--ease-out); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+
+/* Numbered permissions: the order carries meaning, so the number does too. */
+.steps { list-style: none; padding: 0; }
+.steps > li { display: flex; gap: var(--s-3); }
+.steps > li + li { margin-top: var(--s-3); }
+.steps .n { flex: none; width: var(--s-4); font-size: 13px; line-height: 1.8; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.plain-list { list-style: none; padding: 0; }
+.plain-list > li + li { margin-top: var(--s-2); }
+
+.code-block {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.code-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-2) var(--s-3); }
+.code-copy-status { font-size: 13px; color: var(--ink-muted); }
+
+@media (min-width: 880px) {
+  .audit-map--columns { grid-template-columns: minmax(0, 416px) minmax(0, 1fr); align-items: start; }
+  .audit-strip { display: flex; }
+}
+@media (max-width: 480px) {
+  .check-sheet { padding: var(--s-4); }
+  .check-fields { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------- Pricing page (/pricing, P02 & P02a) ---------- */
+.pricing-header {
+  text-align: center;
+  max-width: 64ch;
+  margin: 0 auto var(--s-7);
+}
+.pricing-header > * + * { margin-top: var(--s-3); }
+
+.billing-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  margin-top: var(--s-5);
+}
+.toggle-btn {
+  padding: 6px var(--s-4);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.toggle-btn:hover { color: var(--ink); }
+.toggle-btn[aria-pressed="true"] {
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+.toggle-badge {
+  display: inline-block;
+  margin-left: var(--s-2);
+  padding: 1px var(--s-2);
+  font-size: 11px;
+  border-radius: 999px;
+  background: var(--pine);
+  color: var(--on-pine);
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+@media (min-width: 680px) {
+  .pricing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1000px) {
+  .pricing-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.pricing-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--s-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  height: 100%;
+}
+.pricing-card[data-featured] {
+  border-color: var(--pine);
+  box-shadow: 0 0 0 1px var(--pine);
+}
+.pricing-card-top > * + * { margin-top: var(--s-3); }
+.pricing-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-2);
+}
+.pricing-plan-name {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.pricing-amount {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-1);
+  margin-top: var(--s-4);
+}
+.pricing-num {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 1;
+}
+.pricing-tax {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.pricing-period {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.pricing-desc {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  min-height: 42px;
+}
+.pricing-features {
+  list-style: none;
+  padding: 0;
+  margin: var(--s-5) 0 0;
+  border-top: 1px solid var(--line);
+  padding-top: var(--s-4);
+}
+.pricing-features > li {
+  display: flex;
+  gap: var(--s-2);
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.pricing-features > li + li { margin-top: var(--s-2); }
+.pricing-features > li[data-muted] {
+  color: var(--ink-muted);
+}
+.pricing-card-bottom {
+  margin-top: var(--s-6);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line);
+}
+.pricing-card-bottom .btn { width: 100%; justify-content: center; text-align: center; }
+
+.pricing-honesty-note {
+  max-width: var(--measure);
+  margin: var(--s-6) auto 0;
+  padding: var(--s-4) var(--s-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* Feature Matrix Table */
+.matrix-wrap {
+  margin-top: var(--s-5);
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  text-align: left;
+}
+.matrix-table th, .matrix-table td {
+  padding: var(--s-3) var(--s-4);
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.matrix-table thead th {
+  background: var(--paper);
+  font-weight: 600;
+  border-bottom: 2px solid var(--line);
+}
+.matrix-table thead th:not(:first-child) {
+  text-align: center;
+  min-width: 110px;
+}
+.matrix-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.matrix-table tbody td:not(:first-child) {
+  text-align: center;
+}
+.matrix-category {
+  background: var(--paper);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--s-2) var(--s-4);
+}
+.matrix-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-size: 13px;
+}
+.matrix-status-yes { color: var(--pine); font-weight: 500; }
+.matrix-status-locked { color: var(--ink-muted); }
+.matrix-status-soon { color: var(--ochre); }
+
+/* Modal Backdrop & Dialog */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-4);
+  z-index: 100;
+  overflow-y: auto;
+}
+.modal-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: var(--s-6);
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  animation: reveal-up var(--dur-2) var(--ease-out) both;
+}
+.modal-close {
+  position: absolute;
+  top: var(--s-4);
+  right: var(--s-4);
+  background: transparent;
+  border: 0;
+  font-size: 20px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--radius);
+}
+.modal-close:hover { color: var(--ink); background: var(--paper); }
+
+/* FAQ List */
+.faq-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--s-5) 0 0;
+}
+.faq-item {
+  border-bottom: 1px solid var(--line);
+  padding: var(--s-4) 0;
+}
+.faq-item:first-child { border-top: 1px solid var(--line); }
+.faq-question {
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: var(--s-2);
+}
+.faq-answer {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-muted);
+}

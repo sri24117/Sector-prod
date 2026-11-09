@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import { hasFeature, planRequiredMessage } from "@sector/shared/plans";
-import { AppShell, Field, FindingList, JourneySteps, Message, PageHead, RenderCaveat, Score, Section, ValueSummary, useGuard, when, type Me } from "../../lib/ui";
+import { AccessRecord, AppShell, AuditMap, AuditSummary, Field, FindingList, JourneySteps, Message, PageHead, RenderCaveat, Score, Section, ValueSummary, useGuard, when, type Me } from "../../lib/ui";
 import { FullReport } from "./FullReport";
 
 interface Audit { id: string; url: string; score: number; createdAt: string }
@@ -155,15 +155,23 @@ function Audits({ me }: { me: Me }) {
 
       {open && (
         <Section title="Results" id="results">
-          <p className="finding-title" style={{ overflowWrap: "anywhere" }}>{open.audit.url}</p>
-          <p className="small">Audited {when(open.audit.createdAt)}</p>
-          <div style={{ marginTop: "var(--s-5)" }}><Score value={open.audit.score} animate={open.fresh} /></div>
+          <AuditSummary
+            url={open.audit.url}
+            audited={when(open.audit.createdAt)}
+            score={open.audit.score}
+            items={open.findings}
+            fresh={open.fresh}
+          />
           <RenderCaveat />
           <div style={{ marginTop: "var(--s-6)" }}>
-            <ValueSummary score={open.audit.score} items={open.findings}>{nextAction(open.findings)}</ValueSummary>
-          </div>
-          <div style={{ marginTop: "var(--s-6)" }}>
-            <FindingList items={open.findings} fix={fixFor} autoFix={!!conn} />
+            <AuditMap
+              items={open.findings}
+              fix={fixFor}
+              autoFix={!!conn}
+              proposed={website ? { organizationName: me.organizationName, siteUrl: website } : undefined}
+              level={3}
+              layout="columns"
+            />
           </div>
         </Section>
       )}
@@ -187,25 +195,33 @@ function Audits({ me }: { me: Me }) {
       </Section>
 
       <Section title="WordPress connection" id="wordpress">
-        {!canFixLive ? (
-          <p className="muted prose">{planRequiredMessage("wordpress_fix")} Manual fix steps for each finding stay available on every plan.</p>
-        ) : conn ? (
-          <p className="notice notice-ok"><span>Connected to <strong>{conn.siteUrl}</strong>. Structured-data fixes are applied directly to this site.</span></p>
-        ) : (
-          <p className="muted prose">Not connected. Connecting lets SEctOr apply structured-data fixes to your site and re-check them.</p>
-        )}
-        {canWrite && canFixLive && (
-          <form style={{ marginTop: "var(--s-5)", maxWidth: 480 }} onSubmit={(e) => { e.preventDefault(); void connect(); }}>
-            <p className="small prose" style={{ marginBottom: "var(--s-4)" }}>
-              Install the SEctOr Companion plugin on your site, then create an Application Password for a WordPress administrator
-              (Users, Profile, Application Passwords). Your password is stored encrypted and never shown again.
-            </p>
-            <Field label="Site address"><input className="input" inputMode="url" value={wp.siteUrl} onChange={(e) => setWp({ ...wp, siteUrl: e.target.value })} required /></Field>
-            <Field label="WordPress username"><input className="input" autoComplete="off" value={wp.username} onChange={(e) => setWp({ ...wp, username: e.target.value })} required /></Field>
-            <Field label="Application password"><input className="input" type="password" autoComplete="off" value={wp.applicationPassword} onChange={(e) => setWp({ ...wp, applicationPassword: e.target.value })} required /></Field>
-            <div className="actions"><button type="submit" className="btn" disabled={busy === "connect"}>{busy === "connect" ? "Checking connection…" : conn ? "Reconnect WordPress" : "Connect WordPress"}</button></div>
-          </form>
-        )}
+        <div className="card">
+          <div className="card-head">
+            <p className="finding-title" style={{ overflowWrap: "anywhere" }}>{conn?.siteUrl ?? website ?? "No website saved"}</p>
+            <p className="small">{conn ? "Connected" : "Not connected"}</p>
+          </div>
+          <p className="muted prose" style={{ marginTop: "var(--s-2)" }}>
+            {!canFixLive
+              ? `${planRequiredMessage("wordpress_fix")} Manual fix steps for each finding stay available on every plan.`
+              : conn
+              ? "Structured-data fixes are applied directly to this site and re-checked."
+              : "Connecting lets SEctOr apply the structured-data fix to your site and re-check it."}
+          </p>
+          <AccessRecord />
+          {canWrite && canFixLive && (
+            <form style={{ marginTop: "var(--s-5)", maxWidth: 480 }} onSubmit={(e) => { e.preventDefault(); void connect(); }}>
+              <p className="small prose" style={{ marginBottom: "var(--s-4)" }}>
+                Install the SEctOr Companion plugin on your site first. In WordPress, open Users, then Profile, then
+                Application Passwords, and create one named SEctOr. Your password is stored encrypted and never shown again.
+              </p>
+              <Field label="Site address"><input className="input" inputMode="url" value={wp.siteUrl} onChange={(e) => setWp({ ...wp, siteUrl: e.target.value })} required /></Field>
+              <Field label="WordPress username"><input className="input" autoComplete="off" value={wp.username} onChange={(e) => setWp({ ...wp, username: e.target.value })} required /></Field>
+              <Field label="Application password"><input className="input" type="password" autoComplete="off" value={wp.applicationPassword} onChange={(e) => setWp({ ...wp, applicationPassword: e.target.value })} required /></Field>
+              <div className="actions"><button type="submit" className="btn" disabled={busy === "connect"}>{busy === "connect" ? "Checking connection…" : conn ? "Reconnect WordPress" : "Connect WordPress"}</button></div>
+              <p className="small" style={{ marginTop: "var(--s-3)" }}>Connecting does not apply a fix. You choose the fix from the findings on this page.</p>
+            </form>
+          )}
+        </div>
       </Section>
     </>
   );

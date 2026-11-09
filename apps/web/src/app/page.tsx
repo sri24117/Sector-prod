@@ -17,7 +17,7 @@ export default function HomePage() {
       </div>
       <AuditForm />
       <p className="small" style={{ marginTop: "var(--s-8)" }}>
-        Already working with us? <a href="/login">Log in</a>. New organization? <a href="/signup">Create an account</a>.
+        Already working with us? <a href="/login">Log in</a>. View <a href="/pricing">Plans &amp; Pricing</a>. New organization? <a href="/signup">Create an account</a>.
       </p>
     </main>
   );

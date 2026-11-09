@@ -140,6 +140,7 @@ The PDF rejects, on the user's authority: the warm-cream-and-terracotta AI look,
 - Newsreader announces (score, page headlines, history-row scores); Public Sans explains (everything else, including the wordmark).
 - 6px radius on controls, 12px on cards, pill on chips and progress bars; one 4-to-64px spacing scale.
 - The journey is guided: a four-step progress strip, insight cards, and one "next step" at a time (2026-10-04).
+- Cards group one decision each, and a short, non-looping motion vocabulary explains change (2026-10-27).
 - Pass/fail is always a drawn mark plus a word, never colour alone.
 
 ## Colors
@@ -209,7 +210,7 @@ The PDF reserves true red (#B3261E) for real destructive or error states, such a
 
 The system is flat. There are no shadows anywhere, by default or on hover. Separation comes from hairlines, whitespace and type weight. If a floating element ever needs separation, a single hairline border is the first answer.
 
-**The Hairline-Before-Shadow Rule.** A one-pixel `line` border does the job before any shadow is considered. There are no drop-shadows under cards, because there are no cards.
+**The Hairline-Before-Shadow Rule.** A one-pixel `line` border does the job before any shadow is considered. There are no drop-shadows anywhere, including on hover. A card that is itself a target may darken its hairline to `ink-muted` and lift 1px (`--dur-2`); that is the whole interaction. **Build extension (2026-10-27):** cards do exist now (see Cards and quiet motion), and this rule governs them.
 
 ## Shapes
 
@@ -263,7 +264,9 @@ Used for history, consents and alerts. Each is a flex row with the main text lef
 - **Do** use 6px on buttons and inputs, 12px on cards (surface #FBFCF9, 1px hairline, no shadow), and pill shapes only for chips and progress bars.
 - **Do** give every failing insight an impact chip (its real point weight) and a plain effort chip, with the biggest win first.
 - **Do** keep exactly one primary next action visible per screen.
-- **Do** keep hover and focus changes to 150ms opacity/colour/underline-thickness, and honour `prefers-reduced-motion` everywhere, including the count-up.
+- **Do** keep hover and focus changes to 120–150ms opacity/colour/underline-thickness, a disclosure to 200ms, and a result reveal to 320ms, and honour `prefers-reduced-motion` everywhere, including the count-up.
+- **Do** group one decision per card: a result, a finding, an access record. Never nest a card inside a card.
+- **Do** keep exactly one card open at first: the highest-impact finding. Everything else is one click away.
 - **Do** keep the score rule ink below 70 and pine at 70 or above; change the threshold only in `GOOD_SCORE`.
 
 ### Don't:
@@ -273,4 +276,34 @@ Used for history, consents and alerts. Each is a flex row with the main text lef
 - **Don't** introduce shadows, gradients, card grids, centred hero cards, or a second accent colour.
 - **Don't** use red for failing checks or form errors. True red (#B3261E) is reserved for real destructive states.
 - **Don't** use all-caps or tracked-uppercase labels.
-- **Don't** animate anything other than the score count-up and its rule.
+- **Don't** loop, bounce, parallax or animate more than one thing at a time. The whole vocabulary is: the score count-up and its rule, a 320ms staggered reveal when a result lands, a 200ms disclosure opening, a 120ms button press, and a 1px card lift.
+
+## Cards and quiet motion (2026-10-27)
+
+Approved by the product owner. The paper, ink and pine base stays exactly as it is; what changes is grouping and feedback. The design was moving from "a page of text with some cards in it" to "a set of decisions, each held in one card", because a user on a phone could not find where a finding started and ended.
+
+**Cards.** `--surface` face, 1px `line` hairline, 12px radius, 24px padding (16px under 480px), no shadow. One card per decision: the result summary (score, its arithmetic, the one action), each failing finding, each access record. Passed checks are one closed disclosure, not seven cards. A card that is itself a target lifts 1px and darkens its hairline on hover and `focus-within`; a summary card does not move.
+
+**Disclosures.** Findings are `<details class="disclosure">`. The body animates with `grid-template-rows: 0fr → 1fr` over `--dur-2`, so the card grows instead of jumping. `summary` carries the drawn attention mark, the plain title, the status word, the point weight and a 18px chevron that rotates 180°. The highest-impact finding is open on arrival.
+
+**Motion budget.** `--dur-1` 120ms (press), `--dur-2` 200ms (disclosure, hover), `--dur-3` 320ms (one staggered reveal, 55ms per item). Nothing loops. Everything is disabled by the existing `prefers-reduced-motion` rule, and the content is identical without it.
+
+**Tokens added:** `--dur-1`, `--dur-2`, `--dur-3`, `--ease-in-out`. Classes added: `.card-hover`, `.card-stack`, `.disclosure`, `.disclosure-body`, `.disclosure-inner`, `.disclosure-pad`, `.finding-summary`, `.finding-points`, `.chev`, `.passed-list`, `.passed-row`, `.reveal`, `.result-facts`, `.steps`, `.plain-list`, `.code-block`.
+
+**Not done, deliberately:** no shadows, no gradients, no second accent, no sticky conversion bar, no animated numbers beyond the score, no card inside a card. `.value-card` is retired; the result summary carries the score and its arithmetic in one place.
+
+## The audit map (2026-10-27, design A)
+
+The result is one map rather than a stack of finding cards. Approved by the product owner after three unconstrained explorations. Tokens are unchanged: paper, ink, pine, Newsreader for the score, Public Sans for everything else.
+
+**Summary.** `AuditSummary` puts the score beside its arithmetic: checks passing, checks failing, points available, and a weighted strip whose seven segment widths are the checks' real weights (×3px) and which fills in pine only where a check passes. The strip is hidden below 880px, where the counts alone carry it. No action lives in the summary.
+
+**The map.** `AuditMap` is a weighted register of all seven checks, biggest weight first with failing before passing, beside one finding sheet.
+
+- Register rows are 64px minimum: drawn mark, title (Public Sans 600, 14px), "0 of 20 points", and a weight bar whose **width encodes the check's weight** and whose fill encodes whether it passed. A 5-point check is a 15px bar; a 20-point check is 60px. The bar is the only place weight is drawn, so nothing is decorative.
+- The selected row is a white `surface` row with a 1.5px pine inset ring. The ring is a ring, not elevation: no shadow, no layout shift.
+- The register is a vertical **tablist**. `↑`/`↓`/`←`/`→` move selection, `Home`/`End` jump to the ends, and the roving `tabIndex` keeps one tab stop. The sheet is the `tabpanel`.
+- The sheet holds the title, the status mark and word, earned points, the finding copy, why it matters, effort and method, the proposed change where one exists, exactly one action, and the technical detail.
+- Below 880px the sheet sits under the register, and selecting a check scrolls it into view. On a desktop the two columns are 416px and fluid.
+
+**Unchanged:** motion budget (`--dur-1` press, `--dur-2` selection and hover, `--dur-3` one reveal), the drawn marks, AA status words, the reduced-motion rule, and no shadows anywhere.

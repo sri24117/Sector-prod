@@ -30,7 +30,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         {children}
         <footer className="site-footer small">
-          <nav aria-label="Legal"><a href="/privacy">Privacy Policy</a><a href="/terms">Terms of Service</a></nav>
+          <nav aria-label="Legal">
+            <a href="/pricing">Plans &amp; Pricing</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+          </nav>
         </footer>
       </body>
     </html>

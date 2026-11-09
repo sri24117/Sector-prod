@@ -239,6 +239,285 @@ export function ValueSummary({ score, items, children }: { score: number; items:
   );
 }
 
+/**
+ * Audit summary (2026-10-27, design A): the score beside what it is made of, plus a weighted
+ * strip of the seven checks. It replaces the separate value-summary card, so the number is
+ * never shown without its arithmetic. No action lives here; the action belongs to the finding.
+ */
+export function AuditSummary({ url, audited, score, items, fresh }: {
+  url: string; audited: string; score: number; items: FindingLike[]; fresh?: boolean;
+}) {
+  const failing = items.filter((f) => !f.passed);
+  const points = failing.reduce((n, f) => n + pointsFor(f), 0);
+  const passing = items.length - failing.length;
+  return (
+    <section className="card audit-summary reveal" aria-label="Audit result">
+      <Score value={score} animate={fresh} />
+      <div className="audit-summary-body">
+        <p className="finding-title" style={{ overflowWrap: "anywhere" }}>{url}</p>
+        <p className="small">Audited {audited}</p>
+        <div className="audit-facts">
+          <span className="audit-fact"><b>{passing}</b><span>checks passing</span></span>
+          <span className="audit-fact"><b>{failing.length}</b><span>checks failing</span></span>
+          <span className="audit-fact"><b>{points}</b><span>points available</span></span>
+        </div>
+      </div>
+      <div className="audit-strip" aria-hidden="true">
+        {sortByImpact(items).map((f) => (
+          <span
+            key={f.checkId}
+            data-pass={f.passed ? "" : undefined}
+            style={{ width: pointsFor(f) * 3 }}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The audit as one map (2026-10-27, design A): every check in a weighted register with one
+ * selected finding in the sheet beside it. The register is a vertical tablist, so arrow keys
+ * move between checks; on a phone the sheet sits below the register and selection scrolls it
+ * into view.
+ */
+export function AuditMap<T extends FindingLike>({ items, fix, autoFix, proposed, level = 2, layout = "stacked" }: {
+  items: T[];
+  fix?: (f: T) => ReactNode;
+  autoFix?: boolean;
+  proposed?: { organizationName: string; siteUrl: string };
+  level?: 2 | 3;
+  /** "columns" needs ~880px of container (the signed-in page); the 560px public column stacks. */
+  layout?: "stacked" | "columns";
+}) {
+  const ordered = sortByImpact(items);
+  const first = ordered.find((f) => !f.passed) ?? ordered[0];
+  const [selectedId, setSelectedId] = useState(first?.checkId);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const base = useId();
+  const tabId = (checkId: string) => `${base}-tab-${checkId}`;
+  const panelId = `${base}-panel`;
+  const labelId = `${base}-label`;
+
+  const active = ordered.find((f) => f.checkId === selectedId) ?? first;
+  if (!active) return null;
+
+  const Heading = (level === 2 ? "h2" : "h3") as "h2" | "h3";
+  const c = copy(active);
+  const weight = pointsFor(active);
+  const weFixIt = active.checkId === "schema" && autoFix;
+
+  function choose(checkId: string) {
+    setSelectedId(checkId);
+    if (typeof window === "undefined" || !sheetRef.current) return;
+    // With the sheet below the register (stacked, or a narrow screen) bring it into view.
+    const wide = window.matchMedia("(min-width: 880px)").matches;
+    if (wide && layout === "columns") return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    sheetRef.current.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (!active) return;
+    const i = ordered.findIndex((f) => f.checkId === active.checkId);
+    let next = i;
+    if (e.key === "ArrowDown" || e.key === "ArrowRight") next = (i + 1) % ordered.length;
+    else if (e.key === "ArrowUp" || e.key === "ArrowLeft") next = (i - 1 + ordered.length) % ordered.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = ordered.length - 1;
+    else return;
+    e.preventDefault();
+    const target = ordered[next];
+    if (!target) return;
+    setSelectedId(target.checkId);
+    requestAnimationFrame(() => document.getElementById(tabId(target.checkId))?.focus());
+  }
+
+  return (
+    <div className={layout === "columns" ? "audit-map audit-map--columns" : "audit-map"}>
+      <div className="audit-map-register">
+        <p className="audit-map-label" id={labelId}>All seven checks</p>
+        <div
+          className="check-register"
+          role="tablist"
+          aria-orientation="vertical"
+          aria-labelledby={labelId}
+          onKeyDown={onKeyDown}
+        >
+          {ordered.map((f) => {
+            const selected = f.checkId === active.checkId;
+            const w = pointsFor(f);
+            return (
+              <button
+                key={f.checkId}
+                id={tabId(f.checkId)}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-controls={panelId}
+                tabIndex={selected ? 0 : -1}
+                className="check-tab"
+                onClick={() => choose(f.checkId)}
+              >
+                <Mark passed={f.passed} />
+                <span className="check-tab-body">
+                  <span className="check-title">{copy(f).title}</span>
+                  <span className="check-meta">
+                    <span>{f.passed ? `${w} of ${w}` : `0 of ${w}`} points</span>
+                    <span className="check-track" style={{ width: w * 3 }} aria-hidden="true">
+                      <span className="check-fill" style={{ width: f.passed ? "100%" : "0%" }} />
+                    </span>
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div
+        ref={sheetRef}
+        id={panelId}
+        role="tabpanel"
+        aria-labelledby={tabId(active.checkId)}
+        className="check-sheet"
+      >
+        <div className="card-head" style={{ alignItems: "flex-start" }}>
+          <Heading className="check-sheet-title">{c.title}</Heading>
+          <p className="check-sheet-status">
+            <Mark passed={active.passed} />
+            <span>{active.passed ? "Passed" : "Needs attention"}</span>
+          </p>
+        </div>
+
+        <p className="small" style={{ marginTop: "var(--s-2)" }}>
+          {active.passed ? weight : 0} of {weight} points
+        </p>
+
+        <p className="prose" style={{ marginTop: "var(--s-4)" }}>{active.passed ? c.passed : c.failed}</p>
+
+        {!active.passed && c.why && (
+          <div className="check-sheet-why">
+            <p className="check-field-label">Why it matters</p>
+            <p className="prose" style={{ marginTop: "var(--s-1)" }}>{c.why}</p>
+          </div>
+        )}
+
+        {!active.passed && (
+          <div className="check-fields">
+            <div>
+              <p className="check-field-label">Effort</p>
+              <p className="check-field-value">{weFixIt ? "We can do it for you" : c.effort}</p>
+            </div>
+            <div>
+              <p className="check-field-label">Method</p>
+              <p className="check-field-value">{active.checkId === "schema" ? (autoFix ? "WordPress fix" : "Manual or WordPress") : "Manual steps"}</p>
+            </div>
+          </div>
+        )}
+
+        {proposed && active.checkId === "schema" && !active.passed && (
+          <ProposedChange organizationName={proposed.organizationName} siteUrl={proposed.siteUrl} />
+        )}
+
+        {fix && !active.passed && <div className="insight-action">{fix(active)}</div>}
+
+        <p className="finding-tech" style={{ marginTop: "var(--s-4)" }}>Technical detail: {active.detail}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The one auto-fixable change, shown as the exact block we would write. It is labelled as
+ * proposed because nothing has been applied: the free result has no credentials and no write.
+ */
+export function ProposedChange({ organizationName, siteUrl }: { organizationName: string; siteUrl: string }) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  const absolute = /^https?:\/\//.test(siteUrl) ? siteUrl : `https://${siteUrl}`;
+  const payload = `<script type="application/ld+json">\n${JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "NGO",
+    name: organizationName,
+    url: absolute,
+  }, null, 2)}\n</script>`;
+
+  async function copyBlock() {
+    try {
+      await navigator.clipboard.writeText(payload);
+      setCopied(true);
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard can be blocked; the block stays selectable */ }
+  }
+
+  return (
+    <div style={{ marginTop: "var(--s-4)" }}>
+      <div className="card-head">
+        <p className="small">Proposed change. Not applied yet.</p>
+      </div>
+      <div className="code-block" style={{ marginTop: "var(--s-2)" }}>{payload}</div>
+      <div className="actions">
+        <button type="button" className="btn btn-quiet" aria-live="polite" onClick={() => void copyBlock()}>
+          {copied ? "Copied" : "Copy this block"}
+        </button>
+      </div>
+      <p className="small" style={{ marginTop: "var(--s-2)" }}>
+        Added to the &lt;head&gt; of your homepage. Built from your organization name and website.
+      </p>
+    </div>
+  );
+}
+
+/** The four statements a person needs before handing over WordPress admin access. */
+export function AccessRecord() {
+  return (
+    <div style={{ marginTop: "var(--s-5)" }}>
+      <p className="finding-title">What SEctOr will do</p>
+      <ol className="steps" style={{ marginTop: "var(--s-3)" }}>
+        <li><span className="n">1</span><span>Read the site address, organization name and existing structured data.</span></li>
+        <li><span className="n">2</span><span>Add the organization details block to the homepage head, when you apply that one fix.</span></li>
+        <li><span className="n">3</span><span>Re-check the homepage after the change and record the new score.</span></li>
+      </ol>
+      <p className="finding-title" style={{ marginTop: "var(--s-5)" }}>What it will not do</p>
+      <ul className="plain-list" style={{ marginTop: "var(--s-2)" }}>
+        <li>Change page text, media, plugins or user accounts.</li>
+        <li>Publish, delete or redirect anything.</li>
+        <li>Keep your application password in readable form, or show it again.</li>
+      </ul>
+      <p className="small" style={{ marginTop: "var(--s-4)" }}>
+        Access is one administrator-level application password. Remove it here at any time, or delete it in
+        WordPress under Users, Profile, Application Passwords.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Google Ad Grants program facts, in the same card language as everything else. The
+ * unqualified "most non-profits use under $300" claim was removed here: PRODUCT.md says not
+ * to state a benchmark we cannot source.
+ */
+export function AdGrantsBenchmarkCard() {
+  return (
+    <div className="card">
+      <div className="card-head">
+        <p className="finding-title">Google Ad Grants</p>
+        <p className="small">$10,000 per month</p>
+      </div>
+      <p className="prose" style={{ marginTop: "var(--s-3)" }}>
+        Eligible organisations can receive up to $10,000 per month in free Google Search ads.
+      </p>
+      <p className="prose" style={{ marginTop: "var(--s-2)" }}>
+        The program has rules about account structure, click-through rate and the site itself. Failing them suspends the grant.
+      </p>
+    </div>
+  );
+}
+
 /** Wraps an API action: 401 goes to /login, anything else becomes a plain message. */
 export function useGuard(setMsg: (m: string | null) => void, onError?: (e: ApiError) => boolean) {
   const router = useRouter();

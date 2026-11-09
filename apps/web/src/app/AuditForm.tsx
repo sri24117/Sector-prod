@@ -2,9 +2,14 @@
 
 // Slice 1 v1: see docs/plans/feature-spec-slice1-audit-funnel-v1.md.
 // Calls apps/api's POST /audit directly; nothing here is persisted.
+//
+// Presentation (2026-10-27): the result is a summary card, then one card per finding with the
+// highest-impact one open. One staggered reveal when a result lands; disclosures open in place.
+// The free audit carries no organization name and no session, so the proposed schema block is
+// shown on the signed-in result instead of here.
 
 import { useState } from "react";
-import { FindingList, JourneySteps, RenderCaveat, Score, Message, ValueSummary, when, type FindingLike } from "../lib/ui";
+import { AdGrantsBenchmarkCard, AuditMap, AuditSummary, JourneySteps, Message, RenderCaveat, when, type FindingLike } from "../lib/ui";
 import { track } from "../lib/api";
 
 interface AuditResult { url: string; score: number; runAt: string; checks: FindingLike[] }
@@ -70,25 +75,38 @@ export default function AuditForm() {
       <div aria-live="polite">
         {state.status === "error" && <div style={{ marginTop: "var(--s-5)" }}><Message text={state.message} /></div>}
 
-        {state.status === "done" && (
-          <div style={{ marginTop: "var(--s-7)" }}>
-            <p className="finding-title" style={{ overflowWrap: "anywhere" }}>{state.result.url}</p>
-            <p className="small">Audited {when(state.result.runAt)}</p>
-            <div style={{ marginTop: "var(--s-5)" }}><Score value={state.result.score} /></div>
-            <RenderCaveat />
-            <div style={{ marginTop: "var(--s-6)" }}>
-              <ValueSummary score={state.result.score} items={state.result.checks}>
-                <a className="btn" href={signupFor(state.result)} onClick={() => track("connect_cta_clicked", state.result.url)}>
-                  {state.result.checks.some((c) => !c.passed) ? "Create an account to fix them" : "Create an account to keep watch"}
+        {state.status === "done" && (() => {
+          const { result } = state;
+          const failing = result.checks.filter((c) => !c.passed);
+          return (
+            <div style={{ marginTop: "var(--s-7)" }}>
+              <AuditSummary
+                url={result.url}
+                audited={when(result.runAt)}
+                score={result.score}
+                items={result.checks}
+                fresh
+              />
+
+              <RenderCaveat />
+
+              <div style={{ marginTop: "var(--s-6)" }}>
+                <AuditMap items={result.checks} fix={() => fixLink(result)} />
+              </div>
+
+              <div className="actions" style={{ marginTop: "var(--s-6)" }}>
+                <a className="btn btn-quiet" href={signupFor(result)} onClick={() => track("connect_cta_clicked", result.url)}>
+                  {failing.length ? "Create an account to fix these" : "Create an account to keep watch"}
                 </a>
                 <span className="small">Takes about a minute.</span>
-              </ValueSummary>
+              </div>
+
+              <div style={{ marginTop: "var(--s-6)" }}>
+                <AdGrantsBenchmarkCard />
+              </div>
             </div>
-            <div style={{ marginTop: "var(--s-6)" }}>
-              <FindingList items={state.result.checks} fix={() => fixLink(state.result)} />
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
