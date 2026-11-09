@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useId, cloneElement, isValidElement, type 
 import { usePathname, useRouter } from "next/navigation";
 import { api, ApiError } from "./api";
 import { checkCopy, pointsFor } from "./checks";
-import { planRequiredMessage, type Feature } from "@sector/shared/plans";
+import { planRequiredMessage, normalizePlan, PLAN_NAMES, type Feature } from "@sector/shared/plans";
 
 // Visual vocabulary lives in app/globals.css (docs/design/design-system.pdf).
 
@@ -18,6 +18,7 @@ const NAV = [
   { href: "/ad-grants", label: "Ad Grants" },
   { href: "/content", label: "Content" },
   { href: "/account", label: "Account" },
+  { href: "/plan", label: "Plan" },
 ];
 const ROLE_LABEL = { owner: "Owner", staff: "Staff", viewer: "Viewer" } as const;
 
@@ -43,7 +44,12 @@ export function AppShell({ children }: { children: (me: Me) => ReactNode }) {
       <header className="shell-bar">
         <div className="shell-top">
           <a className="wordmark" href="/dashboard">SEctOr</a>
-          <span className="shell-org">{me.organizationName}</span>
+          <span className="shell-org">
+            <span>{me.organizationName}</span>
+            <a href="/plan" className="shell-plan-badge" title="View plan and content allowance">
+              {PLAN_NAMES[normalizePlan(me.plan)]}
+            </a>
+          </span>
           <span className="shell-user">
             <span>{me.name}</span>
             <span className="small">{ROLE_LABEL[me.role]}</span>

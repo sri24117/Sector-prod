@@ -51,5 +51,12 @@ export function monthStartIst(now: Date = new Date()): Date {
   return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), 1) - offset);
 }
 
+/** Start of the next calendar month in Asia/Kolkata, as a UTC instant (when monthly allowances reset). */
+export function nextMonthStartIst(now: Date = new Date()): Date {
+  const offset = 330 * 60_000;
+  const ist = new Date(now.getTime() + offset);
+  return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth() + 1, 1) - offset);
+}
+
 /** What ops may pass to `set-plan`: the current plans plus the legacy names. */
 export const SETTABLE_PLANS: readonly string[] = [...PLANS, ...Object.keys(LEGACY_PLAN_ALIASES)];

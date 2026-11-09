@@ -6,6 +6,7 @@ import { authenticate, requireRole, logSecurityEvent } from "../auth/middleware.
 import { normalizeUrl } from "./audit.js";
 import { requireFeature } from "../auth/plan.js";
 import { siteHost, instructions, wordpressMatches, metaTagMatches, dnsMatches } from "../lib/site-verification.js";
+import { normalizePlan, PLAN_NAMES, CONTENT_ALLOWANCE, monthStartIst, nextMonthStartIst } from "@sector/shared/plans";
 
 // Full report (docs/superpowers/specs/2026-10-04-full-report-design.md):
 // website ownership, the organization's website, and paid reports. Every query
@@ -37,6 +38,30 @@ export async function registerReportRoutes(app: FastifyInstance, queue: ReportQu
       fcraSelfDeclared: profile?.fcraSelfDeclared ?? false,
       fcraRegistrationNo: profile?.fcraRegistrationNo ?? null,
       fcraConfirmedAt: profile?.fcraConfirmedAt ?? null,
+    };
+  });
+
+  // View organization plan details and content usage meter (Screen A17).
+  app.get("/organization/plan", { preHandler: authenticate }, async (req, reply) => {
+    const db = scopedDb(req.auth!.organizationId);
+    const org = await db.organization.get();
+    if (!org) return reply.status(404).send({ error: "not_found", message: "Organization not found." });
+
+    const plan = normalizePlan(org.plan);
+    const allowance = CONTENT_ALLOWANCE[plan];
+    const usedThisMonth = await db.contentAssets.countSince(monthStartIst());
+    const resetDate = nextMonthStartIst();
+
+    return {
+      organizationId: org.id,
+      organizationName: org.name,
+      plan,
+      planName: PLAN_NAMES[plan],
+      contentAllowance: allowance,
+      contentUsedThisMonth: usedThisMonth,
+      resetDate: resetDate.toISOString(),
+      createdAt: org.createdAt.toISOString(),
+      updatedAt: org.updatedAt.toISOString(),
     };
   });
 
