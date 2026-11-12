@@ -131,6 +131,21 @@ A visitor can type a real NGO URL into the homepage and see a live,
 correct 0-100 audit score with a per-check breakdown and a CTA, with no
 database or queue involved yet.
 
+## UX follow-through (2026-11-07)
+
+The homepage and anonymous audit are the same funnel; UX decisions stay in
+this feature spec rather than in a parallel design spec.
+
+- Say plainly that an anonymous result is not saved and no account is needed.
+- Label the public website URL visibly; tell visitors not to enter passwords
+  or private links. Accept a bare domain by adding `https://`.
+- Keep validation, crawl failure, loading, and successful-result states
+  recoverable and announced to assistive technology. Editing the URL after a
+  result clears the old result so it cannot be mistaken for the new site.
+- Present the score as an assessment, keep the raw-HTML/JavaScript caveat
+  beside the result, and use the existing evidence-based finding copy and CTA.
+- Maintain keyboard focus visibility, 44px controls, and a usable 360px layout.
+
 ---
 
 ## Explicitly not in this increment (and why)

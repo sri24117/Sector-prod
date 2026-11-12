@@ -16,10 +16,25 @@ interface AuditResult { url: string; score: number; runAt: string; checks: Findi
 type State =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "error"; message: string }
+  | { status: "error"; message: string; fieldError: boolean }
   | { status: "done"; result: AuditResult };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+
+function normalizeUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+
+  try {
+    const parsed = new URL(candidate);
+    if (!["http:", "https:"].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password) return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
 
 export default function AuditForm() {
   const [url, setUrl] = useState("");
@@ -27,22 +42,40 @@ export default function AuditForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!url.trim()) return;
+    const normalized = normalizeUrl(url);
+
+    if (!normalized) {
+      setState({
+        status: "error",
+        message: "Check the website address and try again. You can enter it as yourorganization.org.",
+        fieldError: true,
+      });
+      return;
+    }
+
     setState({ status: "loading" });
     try {
       const res = await fetch(`${API_URL}/audit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url: normalized }),
       });
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { message?: string } | null;
-        setState({ status: "error", message: body?.message ?? "Could not run that audit. Check the address and try again." });
+        setState({
+          status: "error",
+          message: body?.message ?? "Could not run that audit. Check the address and try again.",
+          fieldError: false,
+        });
         return;
       }
       setState({ status: "done", result: (await res.json()) as AuditResult });
     } catch {
-      setState({ status: "error", message: "Could not reach the audit service. Check your connection and try again." });
+      setState({
+        status: "error",
+        message: "Could not reach the audit service. Check your connection and try again.",
+        fieldError: false,
+      });
     }
   }
 
@@ -52,28 +85,48 @@ export default function AuditForm() {
   const fixLink = (r: AuditResult) => (
     <a href={signupFor(r)} onClick={() => track("fix_clicked", r.url)}>Create an account to fix this</a>
   );
+  const fieldError = state.status === "error" && state.fieldError;
 
   return (
     <div>
       <JourneySteps current={state.status === "done" ? 2 : 1} />
-      <form onSubmit={handleSubmit} className="inline-form" aria-label="Run a free audit">
+      <form onSubmit={handleSubmit} className="inline-form audit-form" aria-label="Run a free audit" noValidate>
+        <label className="field-label audit-field-label" htmlFor="audit-url">Website address</label>
         <input
           className="input"
           type="text"
           inputMode="url"
           autoComplete="url"
+          id="audit-url"
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          aria-invalid={fieldError || undefined}
+          aria-describedby={`audit-url-hint${fieldError ? " audit-url-error" : ""}`}
+          onChange={(e) => {
+            setUrl(e.target.value);
+            if (state.status === "error" || state.status === "done") {
+              setState({ status: "idle" });
+            }
+          }}
           placeholder="yourorganization.org"
-          aria-label="Website address"
         />
         <button type="submit" className="btn" disabled={state.status === "loading"}>
           {state.status === "loading" ? "Running audit…" : "Run free audit"}
         </button>
+        <p id="audit-url-hint" className="small audit-field-hint">
+          Use a public website address. Do not enter a password or private link.
+        </p>
       </form>
 
       <div aria-live="polite">
-        {state.status === "error" && <div style={{ marginTop: "var(--s-5)" }}><Message text={state.message} /></div>}
+        {state.status === "error" && (
+          <div id={fieldError ? "audit-url-error" : undefined} style={{ marginTop: "var(--s-5)" }}>
+            <Message text={state.message} />
+          </div>
+        )}
+
+        {state.status === "loading" && (
+          <p className="small audit-loading" role="status">Checking the public pages. This may take a few seconds.</p>
+        )}
 
         {state.status === "done" && (() => {
           const { result } = state;
