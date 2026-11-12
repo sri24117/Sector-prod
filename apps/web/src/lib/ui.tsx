@@ -61,6 +61,14 @@ export function AppShell({ children }: { children: (me: Me) => ReactNode }) {
             <a key={n.href} href={n.href} aria-current={path === n.href ? "page" : undefined}>{n.label}</a>
           ))}
         </nav>
+        <details className="shell-mobile-menu">
+          <summary>Menu</summary>
+          <nav className="shell-mobile-menu-nav" aria-label="Main">
+            {NAV.map((n) => (
+              <a key={n.href} href={n.href} aria-current={path === n.href ? "page" : undefined}>{n.label}</a>
+            ))}
+          </nav>
+        </details>
       </header>
       <main className="page">{children(me)}</main>
     </>
