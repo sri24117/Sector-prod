@@ -5,7 +5,8 @@ import { rawDb, scopedDb, schema } from "@sector/db";
 import { hashPassword, verifyPassword } from "../auth/password.js";
 import { generateSessionToken, hashSessionToken, sessionExpiry, setSessionCookie, clearSessionCookie, SESSION_COOKIE_NAME } from "../auth/session.js";
 import { authenticate, logSecurityEvent } from "../auth/middleware.js";
-import { consumeResetToken } from "../auth/password-reset.js";
+import { consumeResetToken, createResetToken } from "../auth/password-reset.js";
+import { sendPasswordResetEmail } from "../lib/email.js";
 import { recordFunnelEvent } from "../lib/funnel.js";
 import { LEGAL_VERSION } from "../lib/legal.js";
 
@@ -182,13 +183,29 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // Step 1 of the pilot reset flow: record the request for ops (scripts/reset-link.ts
-  // issues the link). Same answer whether or not the account exists: no enumeration.
+  // Step 1 of the reset flow: create a single-use token and email the link (Resend,
+  // apps/api/src/lib/email.ts; ops fallback is scripts/reset-link.ts). The answer is
+  // identical whether or not the account exists, and whether or not the provider
+  // accepted the message — no enumeration, and no second channel to probe. Delivery
+  // outcomes go to the security log and the server log, never to the response.
   app.post("/auth/password-reset/request", { config: { rateLimit: { max: 5, timeWindow: "10 minutes" } } }, async (request, reply) => {
     const parsed = ResetRequestSchema.safeParse(request.body);
     if (!parsed.success) return reply.status(400).send({ error: "invalid_input", message: "Enter the email you signed up with." });
     const [user] = await rawDb.select().from(schema.users).where(eq(schema.users.email, parsed.data.email.toLowerCase())).limit(1);
-    await logSecurityEvent({ userId: user?.id, action: "password_reset_requested", result: user ? "success" : "denied", detail: user ? undefined : "unknown_email" });
+    if (!user) {
+      await logSecurityEvent({ action: "password_reset_requested", result: "denied", detail: "unknown_email" });
+      return reply.status(202).send(RESET_REQUEST_ACK);
+    }
+
+    const token = await createResetToken(user.id);
+    let detail = "email_sent";
+    try {
+      if (!(await sendPasswordResetEmail({ to: user.email, name: user.name, token }))) detail = "email_not_configured";
+    } catch (err) {
+      request.log.error(err, "password reset email failed");
+      detail = "email_failed";
+    }
+    await logSecurityEvent({ userId: user.id, action: "password_reset_requested", result: "success", detail });
     return reply.status(202).send(RESET_REQUEST_ACK);
   });
 

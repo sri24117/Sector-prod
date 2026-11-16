@@ -2,9 +2,9 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { rawDb, schema } from "@sector/db";
 import { generateSessionToken, hashSessionToken } from "./session.js";
 
-// Pilot password reset. Ops issues a link with scripts/reset-link.ts (no email
-// service yet); the user sets a new password with it. Raw client by necessity:
-// there is no organization context in either step.
+// Password reset: the route creates the token and emails it (apps/api/src/lib/
+// email.ts, Resend); scripts/reset-link.ts is the ops fallback. Raw client by
+// necessity: there is no organization context in either step.
 
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
 

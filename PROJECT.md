@@ -51,7 +51,7 @@ automation. Full product spec: `docs/product/product.md`. Full domain detail:
 | `docker-compose.yml`, Dockerfiles, `package.json`s, `tsconfig`s | **Real, working configuration**, sized specifically to the confirmed KVM hosting spec (§5). Not yet run end-to-end in this session — verify with `docker compose build` before trusting it blindly. |
 | `services/crawler/src/audit.ts` | **Real, runnable logic** — a reconstruction of the previously-validated Skill 1 audit checks (schema, robots.txt, llms.txt, headings, FAQ pairs, front-loaded stat, freshness). See the reconstruction note in `services/crawler/README.md`: if the founder still has the original `audit-engine.js` file, diff against it and prefer the original. |
 | `apps/api`, `apps/web` | **Boots, has one real route (`/health`) and one real page.** No auth, no database calls, no business logic. This is intentionally a skeleton — Slice 1 in `docs/plans/phase-0-1-roadmap.md` is what fills it in. |
-| `packages/connectors/*` | **Real interface, stub implementations.** Every method throws `NotImplementedError` with a pointer to why (usually a partner-approval gate, see `docs/integrations/integrations.md`). Nothing here can actually call Google/Meta/LinkedIn yet. |
+| `packages/connectors/*` | **Real interface, stub implementations.** Every method throws `NotImplementedError` with a pointer to why (usually a partner-approval gate, see `docs/integrations/integrations.md`). Nothing here can actually call Google/Meta/LinkedIn yet. The exception is `email/` (Resend), which really sends SEctOr's own password-reset mail. |
 | `packages/ai`, `packages/content`, `packages/analytics` | **Real types and structure, no working generation/analytics logic yet.** |
 | Database schema / migrations | **Not created.** The conceptual model is in `docs/architecture/architecture.md` §11 — no Prisma schema or migration exists yet. This is deliberate: writing real migrations before ADR-0002 and ADR-0005 are confirmed would be inventing schema ahead of a human decision. |
 | Auth | **Not implemented.** ADR-0005 proposes an approach; nothing is built. |
@@ -94,7 +94,7 @@ here wholesale — each is referenced from the right place:
 | Headless-browser rendering via Browserless.io, not self-hosted | PROPOSED, HUMAN DECISION REQUIRED on tier | ADR-0003 |
 | Direct social APIs vs. Ayrshare aggregator | **HUMAN DECISION REQUIRED, unresolved** | ADR-0004 |
 | First-party session auth vs. managed provider (Clerk/Auth0) | PROPOSED, HUMAN DECISION REQUIRED | ADR-0005 |
-| Email provider (SES/Postmark/Resend) | **HUMAN DECISION REQUIRED, not yet proposed even** | — |
+| Email provider (SES/Postmark/Resend) | **Resend — CONFIRMED 2026-11-16**; SEctOr's own transactional mail only (password reset) | — |
 | CI/CD pipeline | **Not designed yet** | — |
 
 ## 5. Hosting topology — sized to the actual box, not a guess

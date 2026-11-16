@@ -19,6 +19,7 @@ gate status is visible to the whole team, not buried in one skill's thread.
 | Wix App Market listing | `packages/connectors` (future) | App review, timeline unconfirmed | Unconfirmed | NOT STARTED | 2 |
 | Webflow robots.txt API | n/a | Enterprise-plan-only | N/A | Manual fallback assumed permanently for non-Enterprise clients | 2 |
 | Razorpay (billing/payments) | `packages/connectors/razorpay` (not yet created) | Business KYC (bank account + registration docs), no partner-approval review | Typically 1-5 business days once docs submitted, can stall on document mismatches | NOT STARTED — **blocked on ADR-0006 being confirmed first** (manual-invoicing alternative may make this row moot for the 5-NGO pilot) | n/a — billing, not a skill |
+| Resend (transactional email) | `packages/connectors/email` | None — domain verification only | Immediate | **LIVE** (2026-11-16) — SEctOr's own mail only: password reset. Not an NGO outbound channel. | n/a — platform, not a skill |
 
 ## Rule
 

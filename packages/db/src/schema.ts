@@ -133,9 +133,10 @@ export const funnelEvents = pgTable(
   (table) => [index("funnel_events_event_created_idx").on(table.event, table.createdAt)],
 );
 
-// Password reset (pilot: the link is delivered by ops, see scripts/reset-link.ts).
-// Same principle as sessions: only the SHA-256 of the token is stored, so a DB
-// read alone can never produce a working reset link. Single use, short expiry.
+// Password reset (the link is emailed by Resend, see apps/api/src/lib/email.ts;
+// scripts/reset-link.ts is the ops fallback). Same principle as sessions: only the
+// SHA-256 of the token is stored, so a DB read alone can never produce a working
+// reset link. Single use, short expiry.
 export const passwordResetTokens = pgTable(
   "password_reset_tokens",
   {

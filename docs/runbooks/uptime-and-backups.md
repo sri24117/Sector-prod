@@ -64,6 +64,7 @@ The API image is a slim production build (no repo checkout, no pnpm), so every o
 |---|---|
 | Apply migrations | `docker compose run --rm api npm run migrate` |
 | Confirm an org's FCRA status | `docker compose exec api npm run confirm-fcra -- <organizationId>` |
-| Issue a password reset link | `docker compose exec api npm run reset-link -- <email>` |
+| Resend a password reset link (same as the user's own request) | `docker compose exec api npm run reset-link -- <email>` |
+| Print a password reset link to send by hand (Resend down / unset) | `docker compose exec api npm run reset-link -- <email> --print` |
 | List reset requests | `docker compose exec api npm run reset-link -- --pending` |
 | Funnel report | `docker compose exec api npm run funnel` |

@@ -93,7 +93,7 @@ data shown, actions, states, copy. Copy marked "(exists)" is in the product toda
 - **Route** `/forgot-password`. **Status** BUILT.
 - **Copy (exists):** "Enter the email you signed up with. SEctOr will send you a link to choose a new password."
 - **Field:** Email. **Action:** `Send reset link`.
-- **Truth note:** the product has no email system; SEctOr's team issues the link. The confirmation must be neutral and must not reveal whether the address exists, for example "If that address has an account, SEctOr will send a link." Error (exists): "Could not send the request. Try again."
+- **Truth note:** SEctOr emails the link (Resend) at the address entered. The confirmation must be neutral and must not reveal whether the address exists, for example "If that address has an account, SEctOr will send a link." Error (exists): "Could not send the request. Try again."
 
 ## P06 Set a new password
 

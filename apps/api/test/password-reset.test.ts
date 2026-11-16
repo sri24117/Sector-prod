@@ -5,9 +5,10 @@ import { pool, rawDb, schema } from "@sector/db";
 import { buildApp } from "../src/app.js";
 import { createResetToken } from "../src/auth/password-reset.js";
 
-// Pilot password reset: ops generates the link (scripts/reset-link.ts), the user
-// sets a new password with it. Covers happy path, single use, expiry, garbage
-// tokens, session revocation, and no account enumeration on the request step.
+// Password reset: the request step emails the link (Resend, unconfigured in tests —
+// see test/email.test.ts), the user sets a new password with it. Covers happy path,
+// single use, expiry, garbage tokens, session revocation, and no account enumeration
+// on the request step.
 let app: FastifyInstance;
 let userId: string;
 const EMAIL = "reset@hope.org";

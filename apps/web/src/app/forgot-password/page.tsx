@@ -4,8 +4,9 @@ import { useState } from "react";
 import { api } from "../../lib/api";
 import { Field, Message } from "../../lib/ui";
 
-// Pilot flow: the request is recorded and SEctOr sends the reset link personally
-// (apps/api/src/scripts/reset-link.ts). The page says exactly that, no more.
+// The API emails a one-hour, single-use link (Resend, apps/api/src/lib/email.ts) and
+// answers identically whether or not the address exists — this page repeats that
+// neutral wording and never reveals which it was.
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState<string | null>(null);

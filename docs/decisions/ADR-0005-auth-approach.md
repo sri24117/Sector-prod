@@ -4,6 +4,10 @@
 CONFIRMED (founder go-ahead given with "continue slice 2") — HUMAN DECISION REQUIRED to confirm before the first `User` table
 migration ships
 
+Reconfirmed 2026-11-16: stay on first-party auth for the MVP. Migrate to a
+managed provider (Clerk) only when the Next.js upgrade is on the table and
+managed verification, MFA, social login or enterprise SSO is actually needed.
+
 ## Context
 SEctOr needs organization-scoped login for NGO staff plus internal
 SEctOr-ops accounts. No prior spec commits to a specific auth approach.
@@ -27,3 +31,9 @@ sessions or short-lived JWTs for API calls, role stored on the
 Engineering owns password reset, session expiry, and brute-force protection
 (rate-limit login attempts) in-house rather than delegating to a vendor.
 Revisit if support load from auth issues becomes material.
+
+Password-reset links are emailed through Resend
+(`packages/connectors/email`, configured by `RESEND_API_KEY` + `EMAIL_FROM`);
+delivery is the one part of reset that is not in-house. The ops script
+(`apps/api/src/scripts/reset-link.ts --print`) is the fallback when Resend is
+unavailable, so a mail-provider outage cannot lock users out of their accounts.

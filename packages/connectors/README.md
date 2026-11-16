@@ -23,4 +23,4 @@ recorded fixture / sandbox account in the meantime.
 | `linkedin/` | Stub — gated, Standard Tier, 3-4 months |
 | `x/` | Stub — no gate, real pay-per-use cost |
 | `youtube/` | Stub — gated, 100-channel cap pre-verification |
-| `email/` | Stub — pick a provider (SES/Postmark/Resend) — HUMAN DECISION REQUIRED, not yet chosen |
+| `email/` | **Resend** — SEctOr's own transactional mail (password reset). Not the org-scoped `Connector` shape: the key and From address belong to SEctOr, not to an NGO. |

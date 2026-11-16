@@ -4,7 +4,7 @@ P02,Pricing,Public,/pricing,PROPOSED,all,anyone,"See plans and prices honestly, 
 P02a,Plan request,Public,/pricing (overlay),PROPOSED,all,anyone,"Ask for an invoice or join the founding-member waitlist (no payment)","default; submitting; success; error"
 P03,Create account,Public,/signup,BUILT,all,anyone,"Create the organization and owner login","default; field errors; email taken; weak password; terms not accepted; too many attempts; submitting"
 P04,Log in,Public,/login,BUILT,all,anyone,"Sign in","default; wrong details; too many attempts; submitting"
-P05,Forgot password,Public,/forgot-password,BUILT,all,anyone,"Ask for a reset link (issued by SEctOr's team)","default; neutral confirmation; error"
+P05,Forgot password,Public,/forgot-password,BUILT,all,anyone,"Ask for a reset link, emailed by SEctOr","default; neutral confirmation; error"
 P06,Set a new password,Public,/reset-password,BUILT,all,anyone,"Choose a new password from a reset link","valid link; missing or expired link; error; success"
 P07,Privacy and Terms,Public,/privacy and /terms,BUILT (draft text),all,anyone,"Read the legal documents","reading layout; table of contents on wide screens"
 A01,Overview,App,/dashboard,BUILT,all,owner/staff/viewer,"Show where you stand and the one next step","no audits; not connected; all passing; with changes; loading; error"

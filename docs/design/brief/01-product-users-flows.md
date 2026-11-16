@@ -99,7 +99,7 @@ is PROPOSED (screen `I01`) and is the lowest priority.
 ### Context to design for
 - **Phone first and slow networks.** The audit result must be readable on a 360 px screen. No horizontal scrolling.
 - **India:** dates as `2 Nov 2026`, all times in India Standard Time (Asia/Kolkata), money as `Rs 1,16,999` (Indian digit grouping) and always "+ GST".
-- **No email system in the product today.** Never design "we have emailed you" states. Password-reset links are currently issued by ops.
+- **One email system, one message.** SEctOr emails password-reset links through Resend. There is no email verification, invite, or notification mail yet — do not design "we have emailed you" states beyond the reset link.
 - **Not a mobile app, not a CRM, not a billing system.** These are explicit non-goals.
 
 ## 3. Information architecture
@@ -202,8 +202,8 @@ alerts. The product reads the account and **never changes campaigns**. Live data
 say so plainly.
 
 ### F9. Forgot and reset password
-`P05` (enter email) -> a neutral confirmation (no sign that the address exists) and a note that SEctOr's team
-will send the link -> `P06` (new password) -> `P04`.
+`P05` (enter email) -> a neutral confirmation (no sign that the address exists) saying SEctOr will send a link ->
+SEctOr emails it (Resend) -> `P06` (new password) -> `P04`.
 
 ### F10. Research report (IN REVIEW, then PROPOSED screens)
 Request on `A18` (own verified website, paid plan) -> "being prepared, this can take a while" -> the

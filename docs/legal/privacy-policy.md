@@ -48,7 +48,7 @@ Some data an organization puts into SEctOr is about other people, for example th
 
 ### Password resets
 
-If you ask to reset your password, we record the request in the security log. A SEctOr staff member then sends you a reset link. The link works once, for one hour. We store only a scrambled form of it.
+If you ask to reset your password, we record the request in the security log and email you a reset link. The link works once, for one hour. We store only a scrambled form of it.
 
 ### Server logs
 
