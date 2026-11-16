@@ -5,6 +5,7 @@ import { hasFeature } from "@sector/shared/plans";
 import { AppShell, Field, Message, PageHead, PlanLocked, Section, useGuard, type Me } from "../../lib/ui";
 
 import { downloadText, type Asset } from "../../lib/content";
+import { CHANNELS, readSlot, slotCalendarHref, type CalendarSlot } from "../../lib/calendar";
 interface Consent { id: string; subjectName: string; scope: string; revokedAt: string | null }
 
 const KIND: Record<string, string> = { case_study: "Case study", social_post: "Social post", quote: "Quote" };
@@ -21,6 +22,8 @@ function Content({ me }: { me: Me }) {
   const [editing, setEditing] = useState<Asset | null>(null);
   const [manual, setManual] = useState(false);
   const [manualBody, setManualBody] = useState("");
+  const [calendarSlot, setCalendarSlot] = useState<CalendarSlot | null>(null);
+  const [createdAssetId, setCreatedAssetId] = useState<string | null>(null);
   const [voice, setVoice] = useState("");
   const [c, setC] = useState({ subjectName: "", scope: "story", evidenceNote: "" });
   const [g, setG] = useState({ kind: "case_study", topic: "", facts: "", beneficiaries: "" });
@@ -41,7 +44,9 @@ function Content({ me }: { me: Me }) {
   }, []);
   // From a calendar slot: start a manual social post with the slot's objective as its title.
   useEffect(() => {
-    const topic = new URLSearchParams(window.location.search).get("topic");
+    const params = new URLSearchParams(window.location.search);
+    const topic = params.get("topic");
+    setCalendarSlot(readSlot(params));
     if (topic) { setManual(true); setG((v) => ({ ...v, kind: "social_post", topic: topic.slice(0, 120) })); }
   }, []);
 
@@ -50,9 +55,10 @@ function Content({ me }: { me: Me }) {
   const generate = () => act("generate", async () => {
     const beneficiaries = g.beneficiaries.split(",").map((s) => s.trim()).filter(Boolean);
     const facts = g.facts.split("\n").map((s) => s.trim()).filter(Boolean);
-    await api(manual ? "/content" : "/content/generate", { method: "POST", body: manual
+    const asset = await api<Asset>(manual ? "/content" : "/content/generate", { method: "POST", body: manual
       ? { kind: g.kind, title: g.topic, body: manualBody, facts, beneficiaryRefs: beneficiaries, noBeneficiaryIdentified: beneficiaries.length === 0 }
       : { kind: g.kind, topic: g.topic, facts, beneficiaries, noBeneficiaryIdentified: beneficiaries.length === 0 } });
+    setCreatedAssetId(asset.id);
     setOk("Draft created. Review it below before approving.");
     await load();
   });
@@ -69,7 +75,7 @@ function Content({ me }: { me: Me }) {
             {assets.map((a) => (
               <article key={a.id} className="draft">
                 <h3 className="finding-title">{a.title}</h3>
-                <p className="small">{KIND[a.kind] ?? a.kind}. {STATUS[a.status] ?? a.status}.</p>
+                <p className="draft-meta"><span className="small">{KIND[a.kind] ?? a.kind}</span><span className="status-badge" data-tone={a.status === "draft" ? undefined : "success"}>{STATUS[a.status] ?? a.status}</span></p>
                 {a.beneficiaryRefs.length > 0 && (
                   <p className="small" style={{ marginTop: "var(--s-2)" }}>Features {a.beneficiaryRefs.join(", ")}. Export needs their consent on file.</p>
                 )}
@@ -85,7 +91,7 @@ function Content({ me }: { me: Me }) {
                   <div className="actions"><button className="btn" disabled={busy === a.id}>Save new version</button><button type="button" className="btn-link" onClick={() => setEditing(null)}>Cancel</button></div>
                 </form> : <><p className="draft-body" style={{ marginTop: "var(--s-4)" }}>{a.body}</p>
                 {a.facts?.length > 0 && <details><summary>Source facts</summary><ul>{a.facts.map((f, i) => <li key={i}>{f}</li>)}</ul></details>}
-                {canWrite && <div className="actions"><button className="btn btn-quiet" onClick={() => setEditing({ ...a, facts: a.facts ?? [] })}>Edit draft</button><a className="btn-link" href={`/calendar?asset=${a.id}`}>Add to calendar</a></div>}</>}
+                {canWrite && <div className="actions"><button className="btn btn-quiet" onClick={() => setEditing({ ...a, facts: a.facts ?? [] })}>Edit draft</button><a className="btn-link" href={calendarSlot ? slotCalendarHref(calendarSlot, a.id) : `/calendar?asset=${encodeURIComponent(a.id)}`}>Add to calendar</a></div>}</>}
                 {canWrite && editing?.id !== a.id && a.status === "draft" && (
                   <div className="actions"><button type="button" className="btn" disabled={busy === a.id} onClick={() => act(a.id, async () => { await api(`/content/${a.id}/approve`, { method: "POST", body: { revision: a.revision } }); await load(); })}>Approve draft</button></div>
                 )}
@@ -100,6 +106,7 @@ function Content({ me }: { me: Me }) {
 
       {canWrite && (
         <Section title="Write a new draft" id="generate">
+          {calendarSlot && <div className="context-note stack-2"><p className="finding-title">From your calendar · {calendarSlot.date} · {CHANNELS[calendarSlot.channel as keyof typeof CHANNELS]}</p><p className="small">{calendarSlot.hint}</p>{createdAssetId ? <a className="btn btn-quiet" href={slotCalendarHref(calendarSlot, createdAssetId)}>Continue to calendar</a> : <p className="small">Save your draft here, then return to choose its responsible person and save the calendar entry.</p>}</div>}
           <label className="field"><span><input type="checkbox" checked={manual} onChange={(e) => setManual(e.target.checked)} /> Write or paste a draft without AI</span></label>
           <form style={{ maxWidth: 560 }} onSubmit={(e) => { e.preventDefault(); void generate(); }}>
             <Field label="Type">

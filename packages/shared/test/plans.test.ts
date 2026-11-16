@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { CONTENT_ALLOWANCE, SETTABLE_PLANS, hasFeature, monthStartIst, normalizePlan, planRequiredMessage } from "../src/plans.js";
+import { CONTENT_ALLOWANCE, PLAN_PRICES, SETTABLE_PLANS, hasFeature, monthStartIst, normalizePlan, planRequiredMessage } from "../src/plans.js";
 
 describe("plans", () => {
   it("treats legacy pilot and paid as starter; unknown values get no paid access", () => {
@@ -38,6 +38,15 @@ describe("plans", () => {
 
   it("set-plan accepts current and legacy names only", () => {
     expect([...SETTABLE_PLANS].sort()).toEqual(["free", "growth", "paid", "pilot", "pro", "starter"]);
+  });
+
+  it("keeps the confirmed public prices in one shared table", () => {
+    expect(PLAN_PRICES).toEqual({
+      free: { monthly: 0, annual: 0 },
+      starter: { monthly: 5_999, annual: 53_999 },
+      growth: { monthly: 12_999, annual: 116_999 },
+      pro: { monthly: 21_999, annual: 197_999 },
+    });
   });
 
   it("month starts at midnight on the 1st in Asia/Kolkata", () => {

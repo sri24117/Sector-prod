@@ -303,7 +303,9 @@ export function PageHead({ title, children }: { title: string; children?: ReactN
 }
 
 export function Section({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
-  return <section className="section" aria-labelledby={id}><h2 className="section-heading" id={id}>{title}</h2>{children}</section>;
+  const generatedId = useId();
+  const headingId = `${id ?? generatedId}-heading`;
+  return <section className="section" id={id} aria-labelledby={headingId}><h2 className="section-heading" id={headingId}>{title}</h2>{children}</section>;
 }
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {

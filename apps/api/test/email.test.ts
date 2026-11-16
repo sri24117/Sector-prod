@@ -2,9 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { eq } from "drizzle-orm";
 import { pool, rawDb, schema } from "@sector/db";
-import { resendEmail, EmailError } from "@sector/connectors";
+import { resendEmail, EmailError, type EmailMessage, type EmailTransport } from "@sector/connectors";
 import { buildApp } from "../src/app.js";
-import { emailTransportFromEnv, passwordResetLink, sendPasswordResetEmail } from "../src/lib/email.js";
+import { emailTransportFromEnv, passwordResetLink, sendPasswordResetEmail, sendPlanRequestEmails } from "../src/lib/email.js";
 
 // Resend is SEctOr's own transactional mail (password reset). No API key is set in
 // tests, so these cover the config gate and the request the adapter would make —
@@ -101,6 +101,51 @@ describe("Resend adapter", () => {
   it("throws EmailError when the provider accepts but returns no id", async () => {
     const { transport } = transportReturning(null, 200);
     await expect(transport.send({ to: "user@hope.org", subject: "s", text: "t" })).rejects.toThrow(/no id/);
+  });
+});
+
+describe("plan request email", () => {
+  it("sends an idempotent NGO acknowledgement and ops notification", async () => {
+    const messages: EmailMessage[] = [];
+    const transport: EmailTransport = {
+      send: async (message) => { messages.push(message); return { id: `email-${messages.length}` }; },
+      health: async () => ({ ok: true }),
+    };
+
+    const result = await sendPlanRequestEmails({
+      requestId: "request-123",
+      organizationName: "Hope Foundation",
+      contactName: "Asha Rao",
+      email: "asha@hope.org",
+      plan: "starter",
+      billingCycle: "annual",
+      notes: "Please call after 3 PM.",
+    }, { transport, notifyTo: "ops@sector.org" });
+
+    expect(result).toEqual({ acknowledgementSent: true, opsNotificationSent: true });
+    expect(messages).toHaveLength(2);
+    expect(messages[0]).toMatchObject({
+      to: "asha@hope.org",
+      subject: "SEctOr Starter request received",
+      idempotencyKey: "plan-request:request-123:ack",
+    });
+    expect(messages[0]!.text).toContain("Rs 53,999 + GST per year");
+    expect(messages[1]).toMatchObject({
+      to: "ops@sector.org",
+      idempotencyKey: "plan-request:request-123:ops",
+    });
+    expect(messages[1]!.text).toContain("Hope Foundation");
+  });
+
+  it("keeps a persisted request usable when email is not configured", async () => {
+    await expect(sendPlanRequestEmails({
+      requestId: "request-456",
+      organizationName: "Care Trust",
+      contactName: "Ravi",
+      email: "ravi@care.org",
+      plan: "starter",
+      billingCycle: "monthly",
+    }, { transport: null })).resolves.toEqual({ acknowledgementSent: false, opsNotificationSent: false });
   });
 });
 

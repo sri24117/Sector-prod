@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useId } from "react";
-import { PLAN_NAMES, type Plan } from "@sector/shared/plans";
+import { PLAN_NAMES, PLAN_PRICES, type Plan } from "@sector/shared/plans";
+import { api } from "./api";
 
 export interface PlanConfig {
   id: Plan;
@@ -20,8 +21,7 @@ export const PLANS_CONFIG: PlanConfig[] = [
   {
     id: "free",
     name: PLAN_NAMES.free,
-    monthly: 0,
-    annual: 0,
+    ...PLAN_PRICES.free,
     badge: "Open to everyone",
     badgeType: "open",
     audience: "For non-profits and charities wanting to understand where their website stands today.",
@@ -35,8 +35,7 @@ export const PLANS_CONFIG: PlanConfig[] = [
   {
     id: "starter",
     name: PLAN_NAMES.starter,
-    monthly: 4999,
-    annual: 44990,
+    ...PLAN_PRICES.starter,
     badge: "Available now",
     badgeType: "active",
     audience: "For organizations ready to fix their search presence live and publish compliant stories.",
@@ -52,8 +51,7 @@ export const PLANS_CONFIG: PlanConfig[] = [
   {
     id: "growth",
     name: PLAN_NAMES.growth,
-    monthly: 9999,
-    annual: 89990,
+    ...PLAN_PRICES.growth,
     badge: "Founding-member waitlist",
     badgeType: "waitlist",
     audience: "For established non-profits building multi-channel digital authority and donor outreach.",
@@ -70,8 +68,7 @@ export const PLANS_CONFIG: PlanConfig[] = [
   {
     id: "pro",
     name: PLAN_NAMES.pro,
-    monthly: 19999,
-    annual: 179990,
+    ...PLAN_PRICES.pro,
     badge: "Founding-member waitlist",
     badgeType: "waitlist",
     audience: "For high-impact organizations unlocking and defending Google Ad Grants ad spend.",
@@ -188,8 +185,17 @@ export function PlanRequestModal({
 
     setStatus("submitting");
     try {
-      // Simulate/submit request and trigger harmless fire-and-forget logging
-      await new Promise((r) => setTimeout(r, 600));
+      await api("/plan-requests", {
+        method: "POST",
+        body: {
+          organizationName: orgName.trim(),
+          contactName: userName.trim(),
+          email: email.trim(),
+          plan: targetPlan,
+          billingCycle: cadence,
+          notes: notes.trim() || undefined,
+        },
+      });
       setStatus("success");
     } catch {
       setStatus("error");
@@ -294,9 +300,9 @@ export function PlanRequestModal({
                     value={targetPlan}
                     onChange={(e) => setTargetPlan(e.target.value as Plan)}
                   >
-                    <option value="starter">Starter (₹4,999/mo + GST)</option>
-                    <option value="growth">Growth (₹9,999/mo + GST) [Waitlist]</option>
-                    <option value="pro">Pro (₹19,999/mo + GST) [Waitlist]</option>
+                    <option value="starter">Starter (₹{PLAN_PRICES.starter.monthly.toLocaleString("en-IN")}/mo + GST)</option>
+                    <option value="growth">Growth (₹{PLAN_PRICES.growth.monthly.toLocaleString("en-IN")}/mo + GST) [Waitlist]</option>
+                    <option value="pro">Pro (₹{PLAN_PRICES.pro.monthly.toLocaleString("en-IN")}/mo + GST) [Waitlist]</option>
                   </select>
                 </label>
                 <label className="field">

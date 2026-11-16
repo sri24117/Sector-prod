@@ -13,6 +13,7 @@ import {
 import {
   normalizePlan,
   PLAN_NAMES,
+  PLAN_PRICES,
   CONTENT_ALLOWANCE,
   type Plan,
 } from "@sector/shared/plans";
@@ -216,7 +217,7 @@ function PlanView({ me }: { me: Me }) {
                       className="btn"
                       onClick={() => setModalPlan("starter")}
                     >
-                      Upgrade to Starter (₹4,999/mo + GST)
+                      Upgrade to Starter (₹{PLAN_PRICES.starter.monthly.toLocaleString("en-IN")}/mo + GST)
                     </button>
                   </div>
                 </div>

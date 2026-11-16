@@ -152,12 +152,37 @@ export const passwordResetTokens = pgTable(
   (table) => [index("password_reset_tokens_user_idx").on(table.userId)],
 );
 
+// Public request for a manual invoice (Starter) or founding-member waitlist
+// place (Growth/Pro). This is deliberately not a payment or subscription row:
+// Phase 0-1 invoices and bank/UPI reconciliation stay with SEctOr operations.
+export const planRequests = pgTable(
+  "plan_requests",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    organizationId: text("organization_id").references(() => organizations.id, { onDelete: "set null" }),
+    organizationName: text("organization_name").notNull(),
+    contactName: text("contact_name").notNull(),
+    email: text("email").notNull(),
+    plan: text("plan").notNull(),
+    billingCycle: text("billing_cycle").notNull(),
+    notes: text("notes"),
+    status: text("status").notNull().default("requested"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("plan_requests_status_created_idx").on(table.status, table.createdAt),
+    index("plan_requests_email_idx").on(table.email),
+  ],
+);
+
 export const organizationsRelations = relations(organizations, ({ one, many }) => ({
   profile: one(organizationProfiles, {
     fields: [organizations.id],
     references: [organizationProfiles.organizationId],
   }),
   memberships: many(memberships),
+  planRequests: many(planRequests),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -169,6 +194,13 @@ export const membershipsRelations = relations(memberships, ({ one }) => ({
   user: one(users, { fields: [memberships.userId], references: [users.id] }),
   organization: one(organizations, {
     fields: [memberships.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
+export const planRequestsRelations = relations(planRequests, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [planRequests.organizationId],
     references: [organizations.id],
   }),
 }));

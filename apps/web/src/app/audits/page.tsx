@@ -4,6 +4,7 @@ import { api } from "../../lib/api";
 import { hasFeature, planRequiredMessage } from "@sector/shared/plans";
 import { AccessRecord, AppShell, AuditMap, AuditSummary, Field, FindingList, JourneySteps, Message, PageHead, RenderCaveat, Score, Section, ValueSummary, useGuard, when, type Me } from "../../lib/ui";
 import { FullReport } from "./FullReport";
+import { AuditPrintSummary, type AuditPrintProfile } from "./AuditPrintSummary";
 
 interface Audit { id: string; url: string; score: number; createdAt: string }
 interface Finding { id: string; checkId: string; passed: boolean; detail: string }
@@ -21,6 +22,7 @@ function Audits({ me }: { me: Me }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [printSummary, setPrintSummary] = useState<{ audit: Audit; findings: Finding[]; profile: AuditPrintProfile } | null>(null);
   const [website, setWebsite] = useState<string | null>(me.websiteUrl);
   const [editSite, setEditSite] = useState(!me.websiteUrl);
   const [siteInput, setSiteInput] = useState(me.websiteUrl ?? "");
@@ -28,6 +30,24 @@ function Audits({ me }: { me: Me }) {
   const [conn, setConn] = useState<Connection | null>(null);
   const [wp, setWp] = useState({ siteUrl: "", username: "", applicationPassword: "" });
   const guard = useGuard((m) => { setMsg(m); if (m) setOk(null); });
+
+  useEffect(() => {
+    if (!printSummary) return;
+    const clear = () => setPrintSummary(null);
+    window.addEventListener("afterprint", clear);
+    const frame = requestAnimationFrame(() => window.print());
+    return () => { cancelAnimationFrame(frame); window.removeEventListener("afterprint", clear); };
+  }, [printSummary]);
+
+  const printAudit = () => guard(async () => {
+    if (!open) return;
+    const snapshot = open;
+    setBusy("print");
+    try {
+      const profile = await api<AuditPrintProfile>("/organization/profile");
+      setPrintSummary({ audit: snapshot.audit, findings: snapshot.findings, profile });
+    } finally { setBusy(null); }
+  });
 
   const load = useCallback(async () => { setAudits(await api<Audit[]>("/audits")); setChanges(await api<ChangeRecord[]>("/remediations")); }, []);
   useEffect(() => {
@@ -155,6 +175,7 @@ function Audits({ me }: { me: Me }) {
 
       {open && (
         <Section title="Results" id="results">
+          <div className="report-export"><p className="small">Share this snapshot and a prioritized action plan with your team.</p><button type="button" className="btn btn-quiet" disabled={busy === "print"} onClick={() => void printAudit()}>{busy === "print" ? "Preparing summary…" : "Print / Save summary as PDF"}</button></div>
           <AuditSummary
             url={open.audit.url}
             audited={when(open.audit.createdAt)}
@@ -223,6 +244,7 @@ function Audits({ me }: { me: Me }) {
           )}
         </div>
       </Section>
+      {printSummary && <AuditPrintSummary organizationName={me.organizationName} {...printSummary} />}
     </>
   );
 }

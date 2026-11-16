@@ -1,7 +1,9 @@
 # Feature: Starter pilot proof
 
 Status: the six open decisions were confirmed by the founder on 2026-10-31 and are recorded in
-"Decisions" below. No slice has started. Slice D stays gated on its own pass bar.
+"Decisions" below. Slice C is implemented and integration-tested. Slice A still
+needs real NGOs and WordPress staging; Slice B still needs release-environment
+evidence; Slice D remains intentionally gated on its own pass bar.
 Written 2026-10-31 against `main` at `bc487df`. Format: the MVP Feature Card
 (`docs/methodology/AI_ENGINEERING_HANDYBOOK.md` §24), shaped by the founder's Builder Playbook.
 
@@ -50,7 +52,9 @@ in writing within 14 days.
 - Starter plan enforced by `packages/shared/src/plans.ts`: full report, live WordPress fix, brand kit, consent records and content need Starter; Ad Grants needs Pro; 15 generated pieces a month for Starter, counted from stored drafts.
 - Content: manual drafts work without AI. AI generation returns "not yet available" until `LLM_PROVIDER`, `ANTHROPIC_API_KEY` and `LLM_MODEL` are set. Beneficiary names the user lists are replaced with placeholders before text goes to the model, then restored (`apps/api/src/content/consent.ts`). Names or details only in the free-text facts are NOT replaced.
 - Calendar: manual-posting plan only, no publishing (`apps/api/src/routes/calendar.ts`).
-- Funnel report counts audits, signups, WordPress connections, verified fixes and average score change. It has **no** numbers for reports, drafts, approvals, exports or calendar use.
+- Funnel report counts audits, signups, WordPress connections, verified fixes,
+  score change, finished reports, content created/approved/exported, calendar
+  use, seven-day activity, seven-day outcomes, and paid Starter activation.
 - No CI workflow in the repo (`.github/workflows` is missing). `docs/plans/ngo-starter-mvp.md` lists release gates still open: native Postgres run, worker sandbox test, real WordPress, live AI.
 
 ## Desired behavior
@@ -97,8 +101,8 @@ Generation stays off until this passes.
 - [ ] A: Companion 0.2.0 has run the full apply and restore path on a real WordPress site, and the result is recorded.
 - [ ] A: at least 5 buyer conversations are recorded and the kill-test bar is evaluated against them.
 - [ ] B: the migration chain applies to a fresh database and upgrades one at `0003`; the output is in the PR.
-- [ ] C: the funnel report prints the Starter numbers above, tenant-correct, with demo organizations excluded, and a test covers the queries.
-- [ ] C: no new table, column, event or dependency.
+- [x] C: the funnel report prints the Starter numbers above, tenant-correct, with demo organizations excluded, and a test covers the queries.
+- [x] C: the metrics implementation added no table, column, event or dependency.
 - [ ] D: generation is off in production until the eval set passes the agreed bar and a human flips the configuration.
 - [ ] D: the eval set includes a case where a beneficiary appears only in the facts, and the result is recorded even if it fails.
 - [ ] Every PR states what was and was not verified, using the evidence ladder (Handbook §28).

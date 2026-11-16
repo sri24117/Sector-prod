@@ -4,13 +4,11 @@ import { api } from "../../lib/api";
 import { AppShell, Field, Message, PageHead, PlanLocked, Section, useGuard, type Me } from "../../lib/ui";
 import { hasFeature } from "@sector/shared/plans";
 import type { Asset } from "../../lib/content";
+import { CHANNELS, readSlot, slotDraftHref, starterSlots, type CalendarSlot as Slot } from "../../lib/calendar";
 
 type Item = { id: string; contentAssetId: string; title: string; date: string; channel: string; objective: string; assignee: string; status: string };
-type Slot = { date: string; channel: string; objective: string; hint: string };
 type Plan = { months: 1 | 3; slots: Slot[]; threeMonth: { unlocked: boolean; exported: number; needed: number } };
-const SLOT_KEY = "sector.calendar.slot";
 const slotDay = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
-const CHANNELS = { facebook: "Facebook", instagram: "Instagram", email: "Email", website: "Website", linkedin: "LinkedIn" };
 const STATUS: Record<string, string> = { draft: "Draft — needs approval", ready_to_post: "Ready to post manually", consent_required: "Blocked — consent required" };
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 function Calendar({ me }: { me: Me }) {
@@ -22,13 +20,13 @@ function Calendar({ me }: { me: Me }) {
   const [form, setForm] = useState({ contentAssetId: "", date: today(), channel: "facebook", objective: "", assignee: me.name });
   const guard = useGuard(setMessage);
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [starter, setStarter] = useState(false);
   const showPlan = (months: 1 | 3) => guard(async () => { setOk(null); setPlan(await api<Plan>(`/calendar/plan?months=${months}`)); });
   const applySlot = (s: Slot) => { setEditing(null); setForm((f) => ({ ...f, date: s.date, channel: s.channel, objective: s.objective })); setMonth(s.date.slice(0, 7)); };
   function chooseSlot(s: Slot) {
-    // With no draft yet, write one first; the chosen slot waits in this browser tab and comes back with the draft.
+    // With no draft yet, carry the selected slot through the drafting URL.
     if (assets.length === 0) {
-      try { sessionStorage.setItem(SLOT_KEY, JSON.stringify(s)); } catch { /* the slot is only a convenience */ }
-      window.location.href = `/content?topic=${encodeURIComponent(s.objective)}#generate`; return;
+      window.location.href = slotDraftHref(s); return;
     }
     applySlot(s); setOk(`Slot chosen: ${slotDay(s.date)}. Pick the draft below, then save.`);
     document.getElementById("add")?.scrollIntoView({ behavior: "smooth" });
@@ -38,13 +36,12 @@ function Calendar({ me }: { me: Me }) {
     setItems(nextItems); setAssets(nextAssets);
   }, []);
   useEffect(() => { void guard(async () => {
-    await load(); setPlan(await api<Plan>("/calendar/plan")); const selected = new URLSearchParams(window.location.search).get("asset");
+    await load(); setPlan(await api<Plan>("/calendar/plan"));
+    const params = new URLSearchParams(window.location.search), selected = params.get("asset");
     if (selected) {
       setForm((f) => ({ ...f, contentAssetId: selected }));
-      try {
-        const saved = sessionStorage.getItem(SLOT_KEY); sessionStorage.removeItem(SLOT_KEY);
-        if (saved) { const s = JSON.parse(saved) as Slot; applySlot(s); setOk(`Your draft is ready for the slot on ${slotDay(s.date)}. Check the details and save.`); }
-      } catch { /* no slot waiting */ }
+      const s = readSlot(params);
+      if (s) { applySlot(s); setOk(`Your draft is ready for the slot on ${slotDay(s.date)}. Check the details and save.`); }
     }
   }); /* Initial load is intentionally performed once. */ }, []);
   function save() { return guard(async () => {
@@ -54,13 +51,27 @@ function Calendar({ me }: { me: Me }) {
       setMonth(form.date.slice(0, 7)); setEditing(null); setOk("Calendar saved. Nothing has been scheduled or published."); await load();
     } finally { setBusy(false); }
   }); }
+  const monthItems = items.filter((i) => i.date.startsWith(month));
   return <>
     <PageHead title="Content calendar">Plan your NGO’s communications, assign responsibility, and post approved content manually. Dates use Asia/Kolkata.</PageHead>
     <Message text={message} /><Message text={ok} tone="ok" />
+    <div className="workspace-stats" aria-label="Calendar overview">
+      <div><span className="small">Planned this month</span><strong>{monthItems.length}</strong></div>
+      <div><span className="small">Ready to post manually</span><strong>{monthItems.filter((i) => i.status === "ready_to_post").length}</strong></div>
+      <div><span className="small">Awaiting consent</span><strong>{monthItems.filter((i) => i.status === "consent_required").length}</strong></div>
+    </div>
+    {plan && <Section title="A month of meaningful updates" id="starter">
+      <div className="starter-intro"><div className="stack-2"><p className="prose">Four weeks. Four useful stories. Start with a simple plan, then bring the facts that make it yours.</p><p className="small">Previewing costs no content allowance. Save each draft and calendar entry when you are ready.</p></div><button type="button" className="btn" aria-expanded={starter} aria-controls="starter-weeks" onClick={() => setStarter((value) => !value)}>{starter ? "Hide starter plan" : "Generate starter plan"}</button></div>
+      {starter && <ol className="starter-weeks" id="starter-weeks">{starterSlots(plan.slots).map((s, week) => <li key={s.date} className="starter-week">
+        <div className="card-head"><span className="status-badge">Week {week + 1}</span><span className="small">{slotDay(s.date)}</span></div>
+        <h3 className="finding-title">{s.objective}</h3><p className="small">{s.hint}</p>
+        {canWrite && <a className="btn-link" href={slotDraftHref(s)}>Write this post <span aria-hidden="true">↗</span></a>}
+      </li>)}</ol>}
+    </Section>}
     <div style={{ marginBottom: "var(--s-6)" }}><Field label="Month"><input className="input" style={{ maxWidth: 240 }} type="month" value={month} onChange={(e) => setMonth(e.target.value)} /></Field></div>
     <Section title="Your plan" id="plan">
-      {items.filter((i) => i.date.startsWith(month)).length === 0 ? <p className="muted">No content planned for this month. Create a draft, then choose its date and purpose.</p> : <ul className="rows">{items.filter((i) => i.date.startsWith(month)).map((i) => <li key={i.id} style={{ alignItems: "start", flexWrap: "wrap" }}>
-        <div className="row-main"><p className="finding-title">{i.title}</p><p>{i.date} · {CHANNELS[i.channel as keyof typeof CHANNELS] ?? i.channel}</p><p className="small">{i.objective} · Responsible: {i.assignee}</p><p className="small">{STATUS[i.status] ?? i.status}</p><a href="/content#drafts">Open content to review or download</a></div>
+      {monthItems.length === 0 ? <p className="muted">No content planned for this month. Create a draft, then choose its date and purpose.</p> : <ul className="rows">{monthItems.map((i) => <li key={i.id} style={{ alignItems: "start", flexWrap: "wrap" }}>
+        <div className="row-main stack-2"><p className="finding-title">{i.title}</p><p>{i.date} · {CHANNELS[i.channel as keyof typeof CHANNELS] ?? i.channel}</p><p className="small">{i.objective} · Responsible: {i.assignee}</p><p className="status-badge" data-tone={i.status === "ready_to_post" ? "success" : i.status === "consent_required" ? "attention" : undefined}>{STATUS[i.status] ?? i.status}</p><a href="/content#drafts">Open content to review or download</a></div>
         {canWrite && <div className="actions" style={{ marginTop: 0 }}><button className="btn-link" onClick={() => { setEditing(i.id); setForm({ contentAssetId: i.contentAssetId, date: i.date, channel: i.channel, objective: i.objective, assignee: i.assignee }); }}>Edit plan</button><button className="btn-link" disabled={busy} onClick={() => { if (window.confirm("Remove this calendar entry? Your content draft will stay saved.")) void guard(async () => { await api(`/calendar/${i.id}`, { method: "DELETE" }); await load(); }); }}>Remove</button></div>}
       </li>)}</ul>}
     </Section>

@@ -257,15 +257,15 @@ function AccountSettingsView({ me }: { me: Me }) {
               <div style={{ marginTop: "var(--s-3)" }}>
                 {isFcraVerified ? (
                   <p className="prose small" style={{ color: "var(--pine)" }}>
-                    <strong>Verified:</strong> Confirmed by SEctOr operations on {when(profile.fcraConfirmedAt!)}. Google Ad Grants compliance tools are fully unlocked for this organization.
+                    <strong>Confirmed:</strong> SEctOr operations confirmed your FCRA registration on {when(profile.fcraConfirmedAt!)}. Ad Grants tools also require the Pro plan; live monitoring depends on Google approving SEctOr&apos;s access.
                   </p>
                 ) : fcraSelfDeclared ? (
                   <p className="prose small muted">
-                    <strong>Pending verification:</strong> You have declared that your organization holds an active FCRA certificate. The SEctOr team confirms certificates manually with the MHA register before enabling Google Ad Grants integration.
+                    <strong>Pending confirmation:</strong> Your organization has declared FCRA registration. SEctOr has not confirmed it yet. Your declaration is kept separate from SEctOr&apos;s confirmation.
                   </p>
                 ) : (
                   <p className="prose small muted">
-                    <strong>No FCRA declared:</strong> Under Google&apos;s non-profit policies and Indian law, organizations without valid FCRA registration cannot receive Google Ad Grants foreign budget allocations.
+                    <strong>No FCRA declared:</strong> SEctOr&apos;s Ad Grants tools require FCRA confirmation by SEctOr. If your organization is registered, enter its details above so the team can review them.
                   </p>
                 )}
               </div>

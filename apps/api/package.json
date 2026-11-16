@@ -18,6 +18,7 @@
     "migrate": "tsx node_modules/@sector/db/src/migrate.ts",
     "confirm-fcra": "tsx node_modules/@sector/db/src/confirm-fcra.ts",
     "set-plan": "tsx src/scripts/set-plan.ts",
+    "plan-request": "tsx src/scripts/plan-requests.ts",
     "research-release": "tsx src/scripts/research-release.ts"
   },
   "dependencies": {

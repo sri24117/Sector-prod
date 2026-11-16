@@ -18,6 +18,7 @@ import { registerReportRoutes, type ReportQueue } from "./routes/reports.js";
 import { registerResearchAuditRoutes, type ResearchQueue } from "./routes/research-audits.js";
 import { bullReportQueue } from "./lib/report-queue.js";
 import { servedOverHttps, HSTS_HEADER } from "./lib/https.js";
+import { registerPlanRequestRoutes } from "./routes/plan-requests.js";
 
 // Single place the server is assembled, so tests exercise the exact production wiring.
 export async function buildApp(opts: { logger?: boolean; adsGateway?: GoogleAdsGateway; llmProvider?: LlmProvider; reportQueue?: ReportQueue; researchQueue?: ResearchQueue } = {}): Promise<FastifyInstance> {
@@ -43,6 +44,7 @@ export async function buildApp(opts: { logger?: boolean; adsGateway?: GoogleAdsG
   await registerHealthRoutes(app);
   await registerAuditRoutes(app);
   await registerFunnelRoutes(app);
+  await registerPlanRequestRoutes(app);
   await registerAuthRoutes(app);
   await registerOrgAuditRoutes(app);
   await registerRemediationRoutes(app);

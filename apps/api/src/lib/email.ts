@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { resendEmail, type EmailTransport } from "@sector/connectors";
+import { PLAN_NAMES, PLAN_PRICES, type Plan } from "@sector/shared/plans";
 
 // SEctOr's own transactional email. The provider adapter lives in
 // packages/connectors/email (Resend); this file only reads config and writes the
@@ -67,4 +68,82 @@ export async function sendPasswordResetEmail(input: { to: string; name: string; 
   });
 
   return true;
+}
+
+export interface PlanRequestEmailInput {
+  requestId: string;
+  organizationName: string;
+  contactName: string;
+  email: string;
+  plan: Exclude<Plan, "free">;
+  billingCycle: "monthly" | "annual";
+  notes?: string;
+}
+
+/**
+ * Confirms a persisted invoice/waitlist request to the NGO and, when configured,
+ * notifies the SEctOr ops inbox. Persistence is the source of truth: email is a
+ * best-effort notification and callers must not discard the request if it fails.
+ */
+export async function sendPlanRequestEmails(
+  input: PlanRequestEmailInput,
+  deps: { transport?: EmailTransport | null; notifyTo?: string } = {},
+): Promise<{ acknowledgementSent: boolean; opsNotificationSent: boolean }> {
+  const transport = deps.transport === undefined ? emailTransportFromEnv() : deps.transport;
+  if (!transport) return { acknowledgementSent: false, opsNotificationSent: false };
+
+  const notifyTo = deps.notifyTo === undefined ? process.env.PLAN_REQUEST_NOTIFY_TO?.trim() : deps.notifyTo.trim();
+  const planName = PLAN_NAMES[input.plan];
+  const price = PLAN_PRICES[input.plan][input.billingCycle].toLocaleString("en-IN");
+  const cadence = input.billingCycle === "annual" ? "year" : "month";
+  const requestKey = `plan-request:${input.requestId}`;
+
+  const acknowledgement = transport.send({
+    to: input.email,
+    subject: `SEctOr ${planName} request received`,
+    text: [
+      `Hi ${input.contactName},`,
+      "",
+      `We received ${input.organizationName}'s request for the ${planName} plan at Rs ${price} + GST per ${cadence}.`,
+      "Nothing has been charged. The SEctOr team will contact you to confirm the organization details and arrange the manual invoice.",
+      "",
+      `Reference: ${input.requestId}`,
+      "",
+      "SEctOr",
+    ].join("\n"),
+    html: [
+      '<div style="font-family:system-ui,-apple-system,sans-serif;max-width:34rem;line-height:1.5;color:#1a1a1a">',
+      `<p>Hi ${escapeHtml(input.contactName)},</p>`,
+      `<p>We received ${escapeHtml(input.organizationName)}&apos;s request for the <strong>${escapeHtml(planName)}</strong> plan at <strong>Rs ${price} + GST per ${cadence}</strong>.</p>`,
+      "<p>Nothing has been charged. The SEctOr team will contact you to confirm the organization details and arrange the manual invoice.</p>",
+      `<p style="font-size:.875rem;color:#555">Reference: ${escapeHtml(input.requestId)}</p>`,
+      "<p>SEctOr</p>",
+      "</div>",
+    ].join(""),
+    idempotencyKey: `${requestKey}:ack`,
+  });
+
+  const opsNotification = notifyTo
+    ? transport.send({
+        to: notifyTo,
+        subject: `New ${planName} request — ${input.organizationName}`,
+        text: [
+          `Request: ${input.requestId}`,
+          `Organization: ${input.organizationName}`,
+          `Contact: ${input.contactName} <${input.email}>`,
+          `Plan: ${planName}`,
+          `Billing: ${input.billingCycle} (Rs ${price} + GST per ${cadence})`,
+          `Notes: ${input.notes || "—"}`,
+          "",
+          "Use the plan-request ops script to move this request through contacted, invoiced, paid and activated.",
+        ].join("\n"),
+        idempotencyKey: `${requestKey}:ops`,
+      })
+    : null;
+
+  const results = await Promise.allSettled([acknowledgement, ...(opsNotification ? [opsNotification] : [])]);
+  const failed = results.find((result) => result.status === "rejected");
+  if (failed?.status === "rejected") throw failed.reason;
+
+  return { acknowledgementSent: true, opsNotificationSent: Boolean(opsNotification) };
 }

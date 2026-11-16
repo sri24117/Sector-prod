@@ -22,3 +22,5 @@ coverage/
 # Impeccable review captures (regenerated per review)
 apps/web/.impeccable/review/
 backups/
+.playwright-cli/
+output/playwright/

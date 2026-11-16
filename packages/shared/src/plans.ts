@@ -17,6 +17,16 @@ export function normalizePlan(raw: string | null | undefined): Plan {
 
 export const PLAN_NAMES: Readonly<Record<Plan, string>> = { free: "Free", starter: "Starter", growth: "Growth", pro: "Pro" };
 
+// Confirmed INR prices from docs/product/product.md (2026-10-28). Keeping
+// these beside the entitlement table prevents the public pricing page, the
+// signed-in plan page and transactional email from drifting apart.
+export const PLAN_PRICES: Readonly<Record<Plan, { monthly: number; annual: number }>> = {
+  free: { monthly: 0, annual: 0 },
+  starter: { monthly: 5_999, annual: 53_999 },
+  growth: { monthly: 12_999, annual: 116_999 },
+  pro: { monthly: 21_999, annual: 197_999 },
+};
+
 export type Feature = "full_report" | "wordpress_fix" | "content" | "ad_grants";
 
 // The lowest plan that includes each feature. Higher plans include everything below them.

@@ -8,7 +8,7 @@
     "start": "next start -p 3000",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "echo \"no tests yet\" && exit 0",
+    "test": "node --test test/*.test.mjs",
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {

@@ -1,7 +1,7 @@
 import "../env.js";
 import { and, eq, gt, sql } from "drizzle-orm";
 import { rawDb, pool, schema } from "@sector/db";
-import { normalizePlan } from "@sector/shared/plans";
+import { loadStarterPilotMetrics } from "../lib/starter-metrics.js";
 
 // INTERNAL OPS ONLY. Phase 0-1 Goal #1: does the free audit convert to next steps?
 //   pnpm --filter @sector/api funnel [days=30]
@@ -30,21 +30,16 @@ const firstAudits = await rawDb.select({ n: sql<number>`count(distinct ${schema.
   .where(gt(schema.funnelEvents.createdAt, since));
 console.log(`  of those, ran an audit inside the app  ${firstAudits[0]?.n ?? 0}`);
 
-// The four numbers to check weekly during the pilot (all time, demo organizations excluded).
-const real = `select id from organizations where name not ilike '%(demo)%'`;
-const one = async (q: string) => Number((await pool.query(q)).rows[0]?.n ?? 0);
-const orgs = await one(`select count(*) n from (${real}) o`);
-const audited = await one(`select count(distinct organization_id) n from audits where organization_id in (${real})`);
-const connected = await one(`select count(distinct organization_id) n from platform_connections where status = 'connected' and organization_id in (${real})`);
-const attempted = await one(`select count(*) n from remediation_logs where platform = 'wordpress' and organization_id in (${real})`);
-const verified = await one(`select count(*) n from remediation_logs where status = 'verified' and organization_id in (${real})`);
-const delta = (await pool.query(`select round(avg(after_score - before_score), 1) d from remediation_logs where status = 'verified' and before_score is not null and after_score is not null and organization_id in (${real})`)).rows[0]?.d;
-const plans = (await pool.query(`select plan, count(*)::int n from organizations where id in (${real}) group by plan order by plan`)).rows as { plan: string; n: number }[];
-// Legacy pilot/paid count as starter, matching what the app enforces.
-const plan = (p: string) => plans.filter((r) => normalizePlan(r.plan) === p).reduce((s, r) => s + r.n, 0);
-console.log(`\nPilot, all time (${orgs} organizations, demo excluded)`);
-console.log(`  audited / connected WordPress   ${audited} / ${connected}  connect rate ${pct(connected, audited)}`);
-console.log(`  fixes verified / attempted      ${verified} / ${attempted}  ${pct(verified, attempted)}`);
-console.log(`  average score change per fix    ${delta == null ? "n/a (no verified fixes yet)" : `${Number(delta) > 0 ? "+" : ""}${delta} points`}`);
-console.log(`  plans                           free ${plan("free")}, starter ${plan("starter")}, growth ${plan("growth")}, pro ${plan("pro")}`);
+const pilot = await loadStarterPilotMetrics(pool);
+console.log(`\nPilot, all time (${pilot.organizations} organizations, demo excluded)`);
+console.log(`  audited / connected WordPress   ${pilot.auditedOrganizations} / ${pilot.wordpressConnectedOrganizations}  connect rate ${pct(pilot.wordpressConnectedOrganizations, pilot.auditedOrganizations)}`);
+console.log(`  fixes verified / attempted      ${pilot.verifiedFixes} / ${pilot.remediationAttempts}  ${pct(pilot.verifiedFixes, pilot.remediationAttempts)}`);
+console.log(`  average score change per fix    ${pilot.averageScoreChange === null ? "n/a (no verified fixes yet)" : `${pilot.averageScoreChange > 0 ? "+" : ""}${pilot.averageScoreChange} points`}`);
+console.log(`  full reports finished           ${pilot.finishedReports}`);
+console.log(`  content created / approved / exported  ${pilot.contentCreated} / ${pilot.contentApproved} / ${pilot.contentExported}`);
+console.log(`  calendar items                  ${pilot.calendarItems}`);
+console.log(`  active organizations, 7 days   ${pilot.activeOrganizationsLast7Days}`);
+console.log(`  North Star outcomes, 7 days    ${pilot.outcomeOrganizationsLast7Days}`);
+console.log(`  activated Starter organizations ${pilot.activatedStarterOrganizations}`);
+console.log(`  plans                           free ${pilot.plans.free}, starter ${pilot.plans.starter}, growth ${pilot.plans.growth}, pro ${pilot.plans.pro}`);
 await pool.end();
