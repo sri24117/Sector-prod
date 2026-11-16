@@ -10,60 +10,291 @@ import { planRequiredMessage, normalizePlan, PLAN_NAMES, type Feature } from "@s
 
 export interface Me { userId: string; email: string; name: string; role: "owner" | "staff" | "viewer"; organizationId: string; organizationName: string; plan: string; websiteUrl: string | null }
 
-const NAV = [
-  { href: "/dashboard", label: "Overview" },
-  { href: "/audits", label: "Audits" },
-  { href: "/research", label: "Research" },
-  { href: "/calendar", label: "Calendar" },
-  { href: "/ad-grants", label: "Ad Grants" },
-  { href: "/content", label: "Content" },
-  { href: "/account", label: "Account" },
-  { href: "/plan", label: "Plan" },
-];
 const ROLE_LABEL = { owner: "Owner", staff: "Staff", viewer: "Viewer" } as const;
 
-/** Signed-in frame: who you are, where you are, one hairline. Redirects to /login without a session. */
+// Inline SVG Icons (stroke weight 1.8px) for crisp vector rendering with 0 dependencies
+function DashboardIcon({ className = "sidebar-icon" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect width="7" height="9" x="3" y="3" rx="1.5" />
+      <rect width="7" height="5" x="14" y="3" rx="1.5" />
+      <rect width="7" height="9" x="14" y="12" rx="1.5" />
+      <rect width="7" height="5" x="3" y="16" rx="1.5" />
+    </svg>
+  );
+}
+
+function AuditsIcon({ className = "sidebar-icon" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+function ResearchIcon({ className = "sidebar-icon" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+      <path d="M11 8v6M8 11h6" />
+    </svg>
+  );
+}
+
+function CalendarIcon({ className = "sidebar-icon" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  );
+}
+
+function ContentIcon({ className = "sidebar-icon" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" x2="8" y1="13" y2="13" />
+      <line x1="16" x2="8" y1="17" y2="17" />
+    </svg>
+  );
+}
+
+function AdGrantsIcon({ className = "sidebar-icon" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+      <polyline points="16 7 22 7 22 13" />
+    </svg>
+  );
+}
+
+function AccountIcon({ className = "sidebar-icon" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect width="16" height="20" x="4" y="2" rx="2" />
+      <path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01" />
+    </svg>
+  );
+}
+
+function PlanIcon({ className = "sidebar-icon" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect width="20" height="14" x="2" y="5" rx="2" />
+      <line x1="2" x2="22" y1="10" y2="10" />
+    </svg>
+  );
+}
+
+function MenuIcon({ className = "sidebar-icon" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="4" x2="20" y1="12" y2="12" />
+      <line x1="4" x2="20" y1="6" y2="6" />
+      <line x1="4" x2="20" y1="18" y2="18" />
+    </svg>
+  );
+}
+
+function LogOutIcon({ className = "sidebar-icon" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" x2="9" y1="12" y2="12" />
+    </svg>
+  );
+}
+
+const NAV_PLATFORM = [
+  { href: "/dashboard", label: "Overview", icon: DashboardIcon },
+  { href: "/audits", label: "Audits & Fixes", icon: AuditsIcon },
+  { href: "/research", label: "Website Research", icon: ResearchIcon },
+  { href: "/calendar", label: "Editorial Calendar", icon: CalendarIcon },
+  { href: "/content", label: "Content Studio", icon: ContentIcon },
+  { href: "/ad-grants", label: "Google Ad Grants", icon: AdGrantsIcon },
+];
+
+const NAV_ORG = [
+  { href: "/account", label: "Organization Profile", icon: AccountIcon },
+  { href: "/plan", label: "Plan & Usage", icon: PlanIcon },
+];
+
+/** Modern Application Shell: Fixed Sidebar + Top Navigation + Responsive Modular Workspace */
 export function AppShell({ children }: { children: (me: Me) => ReactNode }) {
   const router = useRouter();
   const path = usePathname();
   const [me, setMe] = useState<Me | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     api<Me>("/auth/me").then(setMe).catch(() => router.replace("/login"));
   }, [router]);
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [path]);
 
   async function logOut() {
     await api("/auth/logout", { method: "POST" }).catch(() => undefined);
     router.push("/login");
   }
 
-  if (!me) return <main className="page"><p className="muted" role="status">Loading your organization…</p></main>;
+  if (!me) {
+    return (
+      <main className="page" style={{ textAlign: "center", paddingTop: "var(--s-8)" }}>
+        <p className="muted" role="status">Loading your organization…</p>
+      </main>
+    );
+  }
+
+  const allNav = [...NAV_PLATFORM, ...NAV_ORG];
+  const activeNav = allNav.find((n) => n.href === path) ?? { label: "Overview" };
+  const initials = me.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase() || "NGO";
 
   return (
-    <>
-      <header className="shell-bar">
-        <div className="shell-top">
-          <a className="wordmark" href="/dashboard">SEctOr</a>
-          <span className="shell-org">
-            <span>{me.organizationName}</span>
-            <a href="/plan" className="shell-plan-badge" title="View plan and content allowance">
+    <div className="app-layout">
+      {/* Mobile Drawer Backdrop */}
+      {sidebarOpen && (
+        <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+      )}
+
+      {/* Modern Left Sidebar */}
+      <aside className={`app-sidebar ${sidebarOpen ? "open" : ""}`} aria-label="Sidebar">
+        {/* Brand Header */}
+        <div className="sidebar-header">
+          <a href="/dashboard" className="sidebar-brand">
+            <div className="sidebar-brand-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <div className="sidebar-brand-text">
+              <span className="sidebar-brand-name">SEctOr</span>
+              <span className="sidebar-brand-sub">NGO Growth Platform</span>
+            </div>
+          </a>
+        </div>
+
+        {/* Current Organization Info & Plan */}
+        <div className="sidebar-org-card">
+          <div className="sidebar-org-avatar" aria-hidden="true">
+            {me.organizationName.slice(0, 1).toUpperCase()}
+          </div>
+          <div className="sidebar-org-meta">
+            <span className="sidebar-org-name" title={me.organizationName}>{me.organizationName}</span>
+            <a href="/plan" className="sidebar-plan-pill" title="View plan and limits">
               {PLAN_NAMES[normalizePlan(me.plan)]}
             </a>
-          </span>
-          <span className="shell-user">
-            <span>{me.name}</span>
-            <span className="small">{ROLE_LABEL[me.role]}</span>
-            <button type="button" className="btn-link" onClick={logOut}>Log out</button>
-          </span>
+          </div>
         </div>
-        <nav className="shell-nav" aria-label="Main">
-          {NAV.map((n) => (
-            <a key={n.href} href={n.href} aria-current={path === n.href ? "page" : undefined}>{n.label}</a>
-          ))}
+
+        {/* Navigation Links */}
+        <nav className="sidebar-nav-container" aria-label="Main Navigation">
+          <div className="sidebar-nav-group">
+            <span className="sidebar-group-title">Platform</span>
+            {NAV_PLATFORM.map((n) => {
+              const Icon = n.icon;
+              const isActive = path === n.href;
+              return (
+                <a
+                  key={n.href}
+                  href={n.href}
+                  className={`sidebar-nav-item ${isActive ? "active" : ""}`}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <Icon className="sidebar-icon" />
+                  <span className="sidebar-item-label">{n.label}</span>
+                </a>
+              );
+            })}
+          </div>
+
+          <div className="sidebar-nav-group">
+            <span className="sidebar-group-title">Organization</span>
+            {NAV_ORG.map((n) => {
+              const Icon = n.icon;
+              const isActive = path === n.href;
+              return (
+                <a
+                  key={n.href}
+                  href={n.href}
+                  className={`sidebar-nav-item ${isActive ? "active" : ""}`}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <Icon className="sidebar-icon" />
+                  <span className="sidebar-item-label">{n.label}</span>
+                </a>
+              );
+            })}
+          </div>
         </nav>
-      </header>
-      <main className="page">{children(me)}</main>
-    </>
+
+        {/* Sidebar Footer: User Profile Card */}
+        <div className="sidebar-footer">
+          <div className="sidebar-user-row">
+            <div className="sidebar-user-avatar" aria-hidden="true">
+              {initials}
+            </div>
+            <div className="sidebar-user-info">
+              <span className="sidebar-user-name" title={me.name}>{me.name}</span>
+              <span className="sidebar-user-role">{ROLE_LABEL[me.role]}</span>
+            </div>
+            <button
+              type="button"
+              className="sidebar-logout-btn"
+              onClick={logOut}
+              title="Log out"
+              aria-label="Log out"
+            >
+              <LogOutIcon />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Workspace Frame */}
+      <div className="app-main-wrapper">
+        {/* Top Navigation Bar */}
+        <header className="app-topbar">
+          <div className="topbar-left">
+            <button
+              type="button"
+              className="mobile-menu-btn"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open navigation menu"
+            >
+              <MenuIcon />
+            </button>
+            <div className="topbar-breadcrumbs">
+              <span className="breadcrumb-root">SEctOr</span>
+              <span className="breadcrumb-separator">/</span>
+              <span className="breadcrumb-current">{activeNav.label}</span>
+            </div>
+          </div>
+
+          <div className="topbar-right">
+            <a href="/" className="btn btn-quiet" style={{ padding: "6px 14px", minHeight: "34px", fontSize: "12.5px" }}>
+              <span>New Audit</span>
+            </a>
+            <a href="/plan" className="topbar-plan-chip" title="Active Plan">
+              <span className="chip-dot" />
+              <span>{PLAN_NAMES[normalizePlan(me.plan)]} Plan</span>
+            </a>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="app-content-body">
+          {children(me)}
+        </main>
+      </div>
+    </div>
   );
 }
 
