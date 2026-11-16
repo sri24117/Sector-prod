@@ -81,7 +81,8 @@ function AccountSettingsView({ me }: { me: Me }) {
 
   useEffect(() => {
     void guard(loadProfile);
-  }, [guard, loadProfile]);
+    // Initial load is intentionally performed once on mount
+  }, []);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();

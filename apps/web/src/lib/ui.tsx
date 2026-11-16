@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, useId, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useId, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api, ApiError } from "./api";
 import { checkCopy, pointsFor } from "./checks";
@@ -760,14 +760,24 @@ export function AdGrantsBenchmarkCard() {
 /** Wraps an API action: 401 goes to /login, anything else becomes a plain message. */
 export function useGuard(setMsg: (m: string | null) => void, onError?: (e: ApiError) => boolean) {
   const router = useRouter();
-  return async function guard<T>(fn: () => Promise<T>): Promise<T | undefined> {
-    setMsg(null);
-    try { return await fn(); } catch (e) {
-      if (e instanceof ApiError && e.status === 401) { router.push("/login"); return; }
-      if (e instanceof ApiError && onError?.(e)) return;
-      setMsg(e instanceof Error ? e.message : "That did not work. Try again.");
+  const setMsgRef = useRef(setMsg);
+  setMsgRef.current = setMsg;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
+  return useCallback(async function guard<T>(fn: () => Promise<T>): Promise<T | undefined> {
+    setMsgRef.current(null);
+    try {
+      return await fn();
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (e instanceof ApiError && onErrorRef.current?.(e)) return;
+      setMsgRef.current(e instanceof Error ? e.message : "That did not work. Try again.");
     }
-  };
+  }, [router]);
 }
 
 export function when(iso: string) {

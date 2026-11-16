@@ -78,7 +78,8 @@ function PlanView({ me }: { me: Me }) {
 
   useEffect(() => {
     void guard(loadPlan);
-  }, [guard, loadPlan]);
+    // Initial plan load is intentionally performed once on mount
+  }, []);
 
   const activePlan = data ? normalizePlan(data.plan) : normalizePlan(me.plan);
   const planConfig = PLANS_CONFIG.find((p) => p.id === activePlan) || PLANS_CONFIG[0]!;

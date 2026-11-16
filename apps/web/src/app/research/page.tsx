@@ -114,17 +114,19 @@ function ResearchAuditView({ me }: { me: Me }) {
   const loadAudits = useCallback(async () => {
     const res = await api<{ audits: AuditSummaryItem[] }>("/research-audits");
     setAudits(res.audits);
-    if (res.audits.length > 0 && !selectedId) {
-      // Pick first released audit, or the latest audit
-      const firstReleased = res.audits.find((a) => a.status === "released");
-      const targetId = firstReleased ? firstReleased.id : res.audits[0]!.id;
-      setSelectedId(targetId);
+    if (res.audits.length > 0) {
+      setSelectedId((curr) => {
+        if (curr) return curr;
+        const firstReleased = res.audits.find((a) => a.status === "released");
+        return firstReleased ? firstReleased.id : res.audits[0]!.id;
+      });
     }
-  }, [selectedId]);
+  }, []);
 
   useEffect(() => {
     void guard(loadAudits);
-  }, [guard, loadAudits]);
+    // Initial load is intentionally performed once on mount
+  }, []);
 
   useEffect(() => {
     if (!selectedId) return;
