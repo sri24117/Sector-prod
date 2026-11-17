@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useId } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { PLAN_NAMES, PLAN_PRICES, type Plan } from "@sector/shared/plans";
 import { api } from "./api";
 
@@ -174,6 +174,42 @@ export function PlanRequestModal({
   const [cadence, setCadence] = useState<"monthly" | "annual">(billing);
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const formId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const submittingRef = useRef(false);
+  submittingRef.current = status === "submitting";
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = dialogRef.current;
+    const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]';
+    dialog?.querySelector<HTMLElement>(focusableSelector)?.focus();
+
+    function keepFocusInside(event: KeyboardEvent) {
+      if (event.key === "Escape" && !submittingRef.current) {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab" || !dialog) return;
+      const focusable = [...dialog.querySelectorAll<HTMLElement>(focusableSelector)];
+      if (focusable.length === 0) return;
+      const first = focusable[0]!;
+      const last = focusable.at(-1)!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    dialog?.addEventListener("keydown", keepFocusInside);
+    return () => {
+      dialog?.removeEventListener("keydown", keepFocusInside);
+      previouslyFocused?.focus();
+    };
+  }, [onClose]);
 
   const isWaitlist = targetPlan === "growth" || targetPlan === "pro";
   const planObj = (PLANS_CONFIG.find((p) => p.id === targetPlan) ?? PLANS_CONFIG[1])!;
@@ -209,12 +245,12 @@ export function PlanRequestModal({
       aria-modal="true"
       aria-labelledby={`${formId}-title`}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget && status !== "submitting") onClose();
       }}
     >
-      <div className="modal-box">
+      <div className="modal-box" ref={dialogRef}>
         {status === "success" ? (
-          <div style={{ textAlign: "center", padding: "var(--s-4) 0" }}>
+          <div aria-live="polite" style={{ textAlign: "center", padding: "var(--s-4) 0" }}>
             <div
               style={{
                 display: "inline-flex",
@@ -261,6 +297,8 @@ export function PlanRequestModal({
                   className="input"
                   type="text"
                   required
+                  maxLength={200}
+                  autoComplete="organization"
                   placeholder="e.g. Hope Foundation"
                   value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
@@ -274,6 +312,8 @@ export function PlanRequestModal({
                     className="input"
                     type="text"
                     required
+                    maxLength={200}
+                    autoComplete="name"
                     placeholder="First and last name"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
@@ -285,6 +325,8 @@ export function PlanRequestModal({
                     className="input"
                     type="email"
                     required
+                    maxLength={320}
+                    autoComplete="email"
                     placeholder="name@ngo.org"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -328,6 +370,7 @@ export function PlanRequestModal({
                 <textarea
                   className="input"
                   style={{ minHeight: "72px" }}
+                  maxLength={2000}
                   placeholder="Website address, FCRA registration status, or any specific requirements..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -335,7 +378,7 @@ export function PlanRequestModal({
               </label>
 
               {status === "error" && (
-                <p className="notice notice-attention small" style={{ marginTop: "var(--s-3)" }}>
+                <p role="alert" className="notice notice-attention small" style={{ marginTop: "var(--s-3)" }}>
                   Could not submit your request. Please check your connection and try again.
                 </p>
               )}

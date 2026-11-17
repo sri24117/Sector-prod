@@ -2,15 +2,7 @@ import "../env.js";
 import { desc, eq } from "drizzle-orm";
 import { pool, rawDb, schema } from "@sector/db";
 import { PLAN_NAMES, type Plan } from "@sector/shared/plans";
-
-const statuses = ["requested", "contacted", "invoiced", "paid", "activated", "declined"] as const;
-type Status = (typeof statuses)[number];
-const next: Record<Exclude<Status, "activated" | "declined">, readonly Status[]> = {
-  requested: ["contacted", "declined"],
-  contacted: ["invoiced", "declined"],
-  invoiced: ["paid", "declined"],
-  paid: ["activated", "declined"],
-};
+import { canTransitionPlanRequest, isPlanRequestStatus, type PlanRequestStatus } from "../lib/plan-request-lifecycle.js";
 
 async function fail(message: string): Promise<never> {
   console.error(message);
@@ -21,7 +13,7 @@ async function fail(message: string): Promise<never> {
 const [idOrList, action, organizationId] = process.argv.slice(2);
 
 if (idOrList === "--list") {
-  if (action && !statuses.includes(action as Status)) await fail(`Unknown status ${action}.`);
+  if (action && !isPlanRequestStatus(action)) await fail(`Unknown status ${action}.`);
   const query = rawDb.select().from(schema.planRequests);
   const rows = action
     ? await query.where(eq(schema.planRequests.status, action)).orderBy(desc(schema.planRequests.createdAt))
@@ -64,12 +56,16 @@ if (requestedAction === "activate") {
   });
   console.log(`${organization.name}: ${PLAN_NAMES[request.plan as Plan]} activated from request ${request.id}.`);
 } else {
-  if (!statuses.includes(requestedAction as Status) || requestedAction === "activated") await fail(`Unknown action ${requestedAction}.`);
-  const current = request.status as Status;
+  if (!isPlanRequestStatus(requestedAction) || requestedAction === "activated") await fail(`Unknown action ${requestedAction}.`);
+  if (!isPlanRequestStatus(request.status)) await fail(`Request has invalid stored status ${request.status}.`);
+  // The awaited fail() calls above terminate the process, but TypeScript does not
+  // preserve their type-guard narrowing across the await boundary.
+  const current = request.status as PlanRequestStatus;
+  const nextStatus = requestedAction as PlanRequestStatus;
   if (current === "activated" || current === "declined") await fail(`Request is already ${current}.`);
-  if (!next[current as keyof typeof next]?.includes(requestedAction as Status)) await fail(`Cannot move ${current} directly to ${requestedAction}.`);
-  await rawDb.update(schema.planRequests).set({ status: requestedAction, updatedAt: new Date() }).where(eq(schema.planRequests.id, request.id));
-  console.log(`${request.id}: ${current} -> ${requestedAction}`);
+  if (!canTransitionPlanRequest(current, nextStatus)) await fail(`Cannot move ${current} directly to ${nextStatus}.`);
+  await rawDb.update(schema.planRequests).set({ status: nextStatus, updatedAt: new Date() }).where(eq(schema.planRequests.id, request.id));
+  console.log(`${request.id}: ${current} -> ${nextStatus}`);
 }
 
 await pool.end();

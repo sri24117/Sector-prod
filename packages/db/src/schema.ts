@@ -173,6 +173,9 @@ export const planRequests = pgTable(
   (table) => [
     index("plan_requests_status_created_idx").on(table.status, table.createdAt),
     index("plan_requests_email_idx").on(table.email),
+    check("plan_requests_plan_ck", sql`${table.plan} in ('starter','growth','pro')`),
+    check("plan_requests_billing_cycle_ck", sql`${table.billingCycle} in ('monthly','annual')`),
+    check("plan_requests_status_ck", sql`${table.status} in ('requested','contacted','invoiced','paid','activated','declined')`),
   ],
 );
 

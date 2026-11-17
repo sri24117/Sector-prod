@@ -1,0 +1,3 @@
+ALTER TABLE "plan_requests" ADD CONSTRAINT "plan_requests_plan_ck" CHECK ("plan_requests"."plan" in ('starter','growth','pro'));--> statement-breakpoint
+ALTER TABLE "plan_requests" ADD CONSTRAINT "plan_requests_billing_cycle_ck" CHECK ("plan_requests"."billing_cycle" in ('monthly','annual'));--> statement-breakpoint
+ALTER TABLE "plan_requests" ADD CONSTRAINT "plan_requests_status_ck" CHECK ("plan_requests"."status" in ('requested','contacted','invoiced','paid','activated','declined'));
