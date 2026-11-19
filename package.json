@@ -1,6 +1,7 @@
 {
   "name": "sector",
   "private": true,
+  "type": "module",
   "version": "0.1.0",
   "description": "SEctOr - NGO digital growth and intelligence platform. Monorepo root.",
   "engines": {

@@ -51,7 +51,9 @@ the first pilot; manual drafting is a complete fallback and needs no model key.
 ## 3. Database and deployment
 
 - [ ] Take a database backup before deployment.
-- [ ] Apply all migrations, including `0007_regular_redwing.sql`:
+- [ ] Apply the complete migration chain through `0008_skinny_wrecker.sql`
+      (`0007_regular_redwing.sql` creates plan requests; `0008` enforces its
+      plan, billing-cycle, and lifecycle constraints):
       `pnpm db:migrate` locally or
       `docker compose run --rm api npm run migrate` on the server.
 - [ ] Run `pnpm typecheck`, `pnpm lint`, `pnpm test`, and `pnpm build` against
